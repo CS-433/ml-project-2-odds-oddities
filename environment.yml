@@ -1,0 +1,10 @@
+name: ml-project2
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - numpy=1.23.1
+  - matplotlib=3.5.2
+  - seaborn=0.11.2
+  - black=22.6.0
+  - wget=1.21.4

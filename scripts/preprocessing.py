@@ -2,6 +2,7 @@
 import os
 
 import numpy as np
+from PIL import Image
 from matplotlib import image as mpimg
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
@@ -27,22 +28,16 @@ class RoadDataset(Dataset):
         self.images = [mpimg.imread(path) for path in image_paths]
         self.masks = [mpimg.imread(path) for path in mask_paths]
 
-        # generate batches from images
-        img_batches = np.asarray([self.get_batches(image) for image in self.images])
-        dim_1, dim_2, dim_3, dim_4, dim_5 = img_batches.shape
-        self.image_batches = img_batches.reshape((dim_1 * dim_2, dim_3, dim_4, dim_5))
-
-        # generate batches from ground truth
-        mask_batches = np.asarray([self.get_batches(mask) for mask in self.masks])
-        dim_1, dim_2, dim_3, dim_4 = mask_batches.shape
-        self.mask_batches = mask_batches.reshape((dim_1 * dim_2, dim_3, dim_4))
-        # 1-hot-encode the ground truth
-        self.ohe_mask = np.asarray(
-            [self.one_hot_encode(np.mean(batch)) for batch in self.mask_batches]
-        ).astype(np.float32)
-
     def __getitem__(self, i):
-        return self.image_batches[i], self.ohe_mask[i]
+        image = np.array(Image.fromarray(self.images[i].astype(np.uint8)).resize((512, 512)))
+        trimap = np.array(Image.fromarray((self.masks[i] * 255).astype(np.uint8)).resize((512, 512)))
+        mask = np.where(trimap > 128, 1, 0)
+
+        # convert to Pytorch format HWC -> CHW
+        image = np.moveaxis(image, -1, 0)
+        mask = np.expand_dims(mask, 0)
+
+        return image, mask
 
     def __len__(self):
         return len(self.images)
@@ -76,4 +71,13 @@ def split_data(images_path: str, test_size: float):
     mask_paths = [os.path.join(labels_directory, image) for image in sorted(os.listdir(labels_directory))]
 
     return train_test_split(image_paths, mask_paths, test_size=test_size)
+
+
+if __name__ == '__main__':
+    ROOT_PATH = os.path.normpath(os.getcwd() + os.sep + os.pardir)
+    train_directory = os.path.join(ROOT_PATH, 'data', 'raw', 'training')
+    image_path_train, image_path_test, mask_path_train, mask_path_test = split_data(train_directory, 0.2)
+
+    train_dataset = RoadDataset(image_path_train, mask_path_train)
+    x = train_dataset[1]
 

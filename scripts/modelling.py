@@ -3,7 +3,7 @@
 import segmentation_models_pytorch as smp
 import pytorch_lightning as pl
 import torch
-
+import torchvision
 
 class RoadModel(pl.LightningModule):
 
@@ -16,14 +16,24 @@ class RoadModel(pl.LightningModule):
         # for image segmentation dice loss could be the best first choice
         self.loss_fn = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
 
-    def forward(self, inputs, target):
-        return self.model(inputs, target)
-
     def training_step(self, batch, batch_idx):
         inputs, target = batch
-        output = self(inputs, target)
-        loss = torch.nn.functional.nll_loss(output, target.view(-1))
-        return loss
+
+        logit_mask = self.model(inputs.float())
+        loss = self.loss_fn(logit_mask, target)
+
+        prob_mask = logit_mask.sigmoid()
+        pred_mask = (prob_mask > 0.5).float()
+
+        tp, fp, fn, tn = smp.metrics.get_stats(pred_mask.long(), target.long(), mode="binary")
+
+        return {
+            "loss": loss,
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+            "tn": tn,
+        }
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=0.0001)
+        return torch.optim.SGD(self.model.parameters(), lr=1e-3)

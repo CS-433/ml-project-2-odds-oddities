@@ -29,7 +29,7 @@ class RoadDataset(Dataset):
         self.masks = [mpimg.imread(path) for path in mask_paths]
 
     def __getitem__(self, i):
-        image = np.array(Image.fromarray(self.images[i].astype(np.uint8)).resize((512, 512)))
+        image = np.array(Image.fromarray((self.images[i] * 255).astype(np.uint8)).resize((512, 512))) / 255
         trimap = np.array(Image.fromarray((self.masks[i] * 255).astype(np.uint8)).resize((512, 512)))
         mask = np.where(trimap > 128, 1, 0)
 
@@ -80,4 +80,6 @@ if __name__ == '__main__':
 
     train_dataset = RoadDataset(image_path_train, mask_path_train)
     x = train_dataset[1]
+
+    kala = 1
 

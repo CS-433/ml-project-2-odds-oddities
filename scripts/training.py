@@ -36,10 +36,10 @@ def train_epoch(model, device, dataloader, criterion, optimizer):
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction='micro-imagewise')
         running_f1 += f1_score.item()
 
-        print(f'[{batch_id + 1:5d}] loss: {loss.item():.3f}')
-
     average_loss = running_loss / len(dataloader)
     average_f1 = running_f1 / len(dataloader)
+
+    print(f'loss: {average_loss:.3f}, f1: {average_loss:.3f}')
 
     return average_loss, average_f1
 

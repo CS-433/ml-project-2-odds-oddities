@@ -1,4 +1,4 @@
-"""TODO: add description."""
+"""preprocessing.py: helper functions and Class for preprocessing."""
 import os
 
 import numpy as np
@@ -15,11 +15,11 @@ N_PATCHES_PER_IMAGE = (IMG_WIDTH / IMG_PATCH_SIZE) * (IMG_HEIGHT / IMG_PATCH_SIZ
 
 
 class RoadDataset(Dataset):
-    """Read images from the specified path.
+    """
+    Dataset class for preprocessing satellite images.
 
-    Args:
-        image_paths (str): TODO: update
-        image_paths (str): TODO: update
+    :param image_paths: local absolute path of images
+    :param mask_paths: local absolute path of ground truths
     """
 
     def __init__(self, image_paths, mask_paths):
@@ -42,26 +42,15 @@ class RoadDataset(Dataset):
     def __len__(self):
         return len(self.images)
 
-    @staticmethod
-    def one_hot_encode(percentage):
-        foreground_threshold = 0.25  # percentage of pixels > 1 required to assign a foreground label to a patch
-        if percentage > foreground_threshold:  # road  TODO: wouldn't vice versa make sense?
-            return [0, 1]
-        else:  # background
-            return [1, 0]
-
-    @staticmethod
-    def get_batches(image):
-        list_patches = []
-
-        for i in range(0, IMG_HEIGHT, IMG_PATCH_SIZE):
-            for j in range(0, IMG_WIDTH, IMG_PATCH_SIZE):
-                list_patches.append(image[j:j + IMG_PATCH_SIZE, i:i + IMG_PATCH_SIZE])
-
-        return list_patches
-
 
 def split_data(images_path: str, test_size: float):
+    """
+    Split list of absolute paths to training and test data by using sklearn.
+
+    :param images_path: absolute path of the parent directory of images
+    :param test_size: value [0, 1]
+    :return: image_path_train, image_path_test, mask_path_train, mask_path_test
+    """
     # specify image and ground truth full path
     image_directory = os.path.join(images_path, "images")
     labels_directory = os.path.join(images_path, "groundtruth")
@@ -73,13 +62,23 @@ def split_data(images_path: str, test_size: float):
     return train_test_split(image_paths, mask_paths, test_size=test_size)
 
 
-if __name__ == '__main__':
-    ROOT_PATH = os.path.normpath(os.getcwd() + os.sep + os.pardir)
-    train_directory = os.path.join(ROOT_PATH, 'data', 'raw', 'training')
-    image_path_train, image_path_test, mask_path_train, mask_path_test = split_data(train_directory, 0.2)
+def get_patched_array(array: np.ndarray, step: int) -> np.ndarray:
+    """
+    As the goal is to return label for 16x16 pixel patches, this function helps to
+        patch the ground truth or prediction using this logic
 
-    train_dataset = RoadDataset(image_path_train, mask_path_train)
-    x = train_dataset[1]
+    :param array: of shape (x, x)
+    :param step: of size
+    :return:
+    """
+    patched_img = np.zeros(array.shape)
+    foreground_threshold = 0.25  # percentage of pixels > 1 required to assign a foreground label to a patch
 
-    kala = 1
+    for x in range(0, array.shape[0], step):
+        for y in range(0, array.shape[1], step):
+            patch_mean = np.mean(array[y:y+step, x:x+step])
+            patched_img[y:y+step, x:x+step] = 1 if patch_mean > foreground_threshold else 0
+
+    return patched_img
+
 

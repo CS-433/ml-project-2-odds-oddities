@@ -6,6 +6,7 @@ from PIL import Image
 from matplotlib import image as mpimg
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
+import albumentations as A
 
 
 IMG_PATCH_SIZE = 16
@@ -22,12 +23,13 @@ class RoadDataset(Dataset):
     :param mask_paths: local absolute path of ground truths
     """
 
-    def __init__(self, image_paths, mask_paths, *args, **kwargs):
-        super().__init__(image_paths, *args, **kwargs)
+    def __init__(self, image_paths, mask_paths, transform=None):
+        #super().__init__(image_paths, *args, **kwargs)
 
         # read images in
         self.images = [mpimg.imread(path) for path in image_paths]
         self.masks = [mpimg.imread(path) for path in mask_paths]
+        self.transform = transform
 
     def __getitem__(self, i):
         image = np.array(Image.fromarray((self.images[i] * 255).astype(np.uint8)).resize((512, 512))) / 255
@@ -37,6 +39,11 @@ class RoadDataset(Dataset):
         # convert to Pytorch format HWC -> CHW
         image = np.moveaxis(image, -1, 0)
         mask = np.expand_dims(mask, 0)
+
+        if self.transform:
+            # Apply same transformation to image and mask
+            transformed = self.transform(image=image, mask=mask)
+            return transformed['image'], transformed['mask']
 
         return image, mask
 

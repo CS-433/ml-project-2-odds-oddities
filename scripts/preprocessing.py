@@ -22,7 +22,8 @@ class RoadDataset(Dataset):
     :param mask_paths: local absolute path of ground truths
     """
 
-    def __init__(self, image_paths, mask_paths):
+    def __init__(self, image_paths, mask_paths, *args, **kwargs):
+        super().__init__(image_paths, *args, **kwargs)
 
         # read images in
         self.images = [mpimg.imread(path) for path in image_paths]

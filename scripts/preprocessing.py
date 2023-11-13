@@ -4,6 +4,8 @@ import os
 import numpy as np
 from PIL import Image
 from matplotlib import image as mpimg
+from skimage.util import view_as_blocks
+from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
@@ -62,6 +64,19 @@ def split_data(images_path: str, test_size: float):
     return train_test_split(image_paths, mask_paths, test_size=test_size)
 
 
+def get_class(array: np.ndarray) -> int:
+    """
+    Based on the specified threshold (by professors) assign the array to
+        either foreground/road (1) or background (0)
+
+    :param array: usually a block with shape (16, 16)
+    :return: {0, 1}
+    """
+    # percentage of pixels > 1 required to assign a foreground label to a patch
+    foreground_threshold = 0.25
+    return int(np.mean(array) > foreground_threshold)
+
+
 def get_patched_array(array: np.ndarray, step: int) -> np.ndarray:
     """
     As the goal is to return label for 16x16 pixel patches, this function helps to
@@ -72,13 +87,37 @@ def get_patched_array(array: np.ndarray, step: int) -> np.ndarray:
     :return:
     """
     patched_img = np.zeros(array.shape)
-    foreground_threshold = 0.25  # percentage of pixels > 1 required to assign a foreground label to a patch
 
     for x in range(0, array.shape[0], step):
         for y in range(0, array.shape[1], step):
-            patch_mean = np.mean(array[y:y+step, x:x+step])
-            patched_img[y:y+step, x:x+step] = 1 if patch_mean > foreground_threshold else 0
+            patched_img[y:y+step, x:x+step] = get_class(array[y:y+step, x:x+step])
 
     return patched_img
+
+
+def get_patched_f1(output: np.ndarray, target: np.ndarray, side_length: int = 16) -> float:
+    """
+    Return the f1 score based on the patched logic. As the classification task
+        requires label for every 16x16 patch, we need to calculate the final
+        f1 using the very same logic.
+
+    :param output: with predicted labels for each pixel
+    :param target: ground truth
+    :param side_length: usually 16 pixels
+    :return: f1 score in [0, 1]
+    """
+    block_shape = (side_length, side_length)
+    # calculate the number of blocks we should have
+    num_blocks = int((target.shape[0] / side_length) ** 2)
+
+    output_blocks = (view_as_blocks(output, block_shape=block_shape).
+                     reshape(num_blocks, side_length, side_length))
+    target_blocks = (view_as_blocks(target, block_shape=block_shape).
+                     reshape(num_blocks, side_length, side_length))
+
+    target_labels = [get_class(target_block) for target_block in target_blocks]
+    output_labels = [get_class(output_block) for output_block in output_blocks]
+
+    return f1_score(target_labels, output_labels)
 
 

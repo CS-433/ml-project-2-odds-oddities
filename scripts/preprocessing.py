@@ -4,12 +4,10 @@ import os
 import numpy as np
 from PIL import Image
 from matplotlib import image as mpimg
-from skimage.util import view_as_blocks
-from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
-from scripts.plotting import make_image_plottable
+from scripts.array_manipulations import simplify_array
 
 IMG_PATCH_SIZE = 16
 IMG_WIDTH = 400
@@ -87,7 +85,7 @@ def get_patched_array(array: np.ndarray) -> np.ndarray:
     :return: same size array with same classification value for the patch
     """
     # function name is misleading, but (1, x, x) -> (x, x)
-    array = make_image_plottable(array)
+    array = simplify_array(array)
     patched_img = np.zeros(array.shape)
 
     for x in range(0, array.shape[0], IMG_PATCH_SIZE):
@@ -97,6 +95,3 @@ def get_patched_array(array: np.ndarray) -> np.ndarray:
             )
 
     return patched_img
-
-
-

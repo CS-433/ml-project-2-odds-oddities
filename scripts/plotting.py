@@ -7,31 +7,12 @@ from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
 from distutils.spawn import find_executable
 
-
-def _is_color_image(array: np.ndarray) -> bool:
-    return 3 in array.shape
-
-
-def _is_chw(array: np.ndarray) -> bool:
-    return array.shape[0] < array.shape[1]
+from scripts.array_manipulations import simplify_array
+from scripts.evaluation import get_patched_f1, get_correct_mask, get_prediction
+from scripts.preprocessing import get_patched_array
 
 
-def make_image_plottable(image: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
-    """
-
-    :param image:
-    :return:
-    """
-    image = image.numpy().squeeze() if isinstance(image, torch.Tensor) else image
-
-    if _is_color_image(image) and _is_chw(image):
-        return image.transpose(1, 2, 0)
-    elif not _is_color_image(image) and _is_chw(image):
-        return image.squeeze()
-    return image
-
-
-def show_images(axis: bool = True, tight_layout: bool = False, **images):
+def plot_images(axis: bool = True, tight_layout: bool = False, **images):
     """
     Plot images next to each other.
 
@@ -47,7 +28,7 @@ def show_images(axis: bool = True, tight_layout: bool = False, **images):
         plt.axis('off') if not axis else None
         # get title from the parameter names
         plt.title(name.replace('_', ' ').title(), fontsize=14)
-        plt.imshow(make_image_plottable(image), cmap="Greys_r")
+        plt.imshow(simplify_array(image), cmap="Greys_r")
     plt.tight_layout() if tight_layout else None
     plt.show()
 
@@ -68,7 +49,8 @@ def plot_metric_per_epoch(
     """
     plt.set_cmap('Set2')
 
-    plt.rc('text', usetex=find_executable('latex'))
+    # use latex whenever possible
+    plt.rc('text', usetex=bool(find_executable('latex')))
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", plt.cm.Dark2.colors)
 
     # force epochs to integers
@@ -91,3 +73,49 @@ def plot_metric_per_epoch(
     plt.tight_layout()
 
 
+def plot_n_predictions(
+        model,
+        dataloader,
+        num_images: int = 5,
+        is_patched: bool = True,
+        is_comparison: bool = True
+):
+    """
+    Plot image with ground truth and prediction. If booleans are true,
+        plot patched versions of the mask and predictions alongside
+        the comparison of the two.
+
+    :param model: trained
+    :param dataloader: with batch_size=1
+    :param num_images: to plot
+    :param is_patched: if True -> plot patched mask and prediction
+    :param is_comparison: if True -> plot patched comparison
+    """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    image_count = 0
+
+    for image, label in dataloader:
+        image, label = image.to(device), label.to(device)
+        predicted = get_prediction(model, image)
+        print('f1: {:.2f}'.format(get_patched_f1(predicted, label)))
+
+        extra_plots = {}
+        if is_patched:
+            extra_plots['ground_truth_16x16'] = get_patched_array(label)
+            extra_plots['predicted_16x16'] = get_patched_array(predicted)
+        if is_comparison:
+            extra_plots['comparison'] = get_correct_mask(
+                extra_plots['ground_truth_16x16'], extra_plots['predicted_16x16']
+            )
+
+        plot_images(
+            axis=False,
+            satellite=image,
+            ground_truth=label,
+            predicted=predicted,
+            **extra_plots
+        )
+
+        image_count += 1
+        if image_count >= num_images:
+            break

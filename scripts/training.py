@@ -6,17 +6,17 @@ import segmentation_models_pytorch as smp
 import torch
 
 
-def _train_epoch(model, device, dataloader, criterion, optimizer) -> (float, float):
+def _train_epoch(model, dataloader, criterion, optimizer) -> (float, float):
     """
     Train the model and return epoch loss and average f1 score.
 
     :param model: to be trained (with pretrained encoder)
-    :param device: either "cuda" or "cpu"
     :param dataloader: with images
     :param criterion: loss function
     :param optimizer: some SGD implementation
     :return: average loss, average f1 score
     """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     running_loss, running_f1 = 0., 0.
     model.train()
 
@@ -46,16 +46,17 @@ def _train_epoch(model, device, dataloader, criterion, optimizer) -> (float, flo
     return average_loss, average_f1
 
 
-def _valid_epoch(model, device, dataloader, criterion) -> (float, float):
+@torch.no_grad()
+def _valid_epoch(model, dataloader, criterion) -> (float, float):
     """
     Validate the model performance by calculating epoch loss and average f1 score.
 
     :param model: used for inference
-    :param device: either "cuda" or "cpu"
     :param dataloader: with validation fold of images
     :param criterion: loss function
     :return: average loss, average f1 score
     """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     running_loss, running_f1 = 0., 0.
     model.eval()
 
@@ -96,7 +97,17 @@ def setup_seed(seed: int, cuda: bool = False):
     torch.backends.cudnn.deterministic = True
 
 
-def train_model(model, criterion, optimizer, dataloaders, num_epochs):
+def train_model(model, dataloaders, criterion, optimizer, num_epochs) -> tuple:
+    """
+    Train model for number of epochs and calculate loss and f1.
+
+    :param model: to be trained (with pretrained encoder)
+    :param dataloaders: tuple of dataloaders with images (train and validation)
+    :param criterion: loss function
+    :param optimizer: some SGD implementation
+    :param num_epochs:
+    :return: lists of train_losses, valid_losses, train_f1s, valid_f1s
+    """
     train_loader, valid_loader = dataloaders
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -106,8 +117,8 @@ def train_model(model, criterion, optimizer, dataloaders, num_epochs):
 
     for epoch in range(num_epochs):
 
-        train_loss, train_f1 = _train_epoch(model, device, train_loader, criterion, optimizer)
-        valid_loss, val_f1 = _valid_epoch(model, device, valid_loader, criterion)
+        train_loss, train_f1 = _train_epoch(model, train_loader, criterion, optimizer)
+        valid_loss, val_f1 = _valid_epoch(model, valid_loader, criterion)
 
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)

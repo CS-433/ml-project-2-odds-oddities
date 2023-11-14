@@ -6,6 +6,7 @@ from PIL import Image
 from matplotlib import image as mpimg
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
+import albumentations as A
 
 from scripts.array_manipulations import simplify_array
 
@@ -23,16 +24,27 @@ class RoadDataset(Dataset):
     :param mask_paths: local absolute path of ground truths
     """
 
-    def __init__(self, image_paths, mask_paths):
+    def __init__(self, image_paths, mask_paths, transform=None):
+        #super().__init__(image_paths, *args, **kwargs)
 
         # read images in
         self.images = [mpimg.imread(path) for path in image_paths]
         self.masks = [mpimg.imread(path) for path in mask_paths]
+        self.transform = transform
 
     def __getitem__(self, i):
         image = np.array(Image.fromarray((self.images[i] * 255).astype(np.uint8)).resize((512, 512))) / 255
         trimap = np.array(Image.fromarray((self.masks[i] * 255).astype(np.uint8)).resize((512, 512)))
         mask = np.where(trimap > 128, 1, 0)
+        
+        image = image.astype(np.float32)    # Previous division creates float64 by default, but augmentations can only handle one of [uint8, float32]
+        mask = mask.astype(np.uint8)        # Mask values are [0,1] so uint8 is more reasonable: np.uint32 -> np.uint8
+        
+        if self.transform:
+            # Apply same transformation to image and mask
+            # NB! This must be done before converting to Pytorch format
+            transformed = self.transform(image=image, mask=mask)
+            image, mask = transformed['image'], transformed['mask']
 
         # convert to Pytorch format HWC -> CHW
         image = np.moveaxis(image, -1, 0)

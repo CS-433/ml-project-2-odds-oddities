@@ -5,9 +5,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
-import matplotlib_latex_bridge as mlb
-
-mlb.setup_page(**mlb.formats.article_letterpaper_10pt_singlecolumn)
+from distutils.spawn import find_executable
 
 
 def _is_color_image(array: np.ndarray) -> bool:
@@ -69,7 +67,8 @@ def plot_metric_per_epoch(
     :param title: if necessary
     """
     plt.set_cmap('Set2')
-    plt.rc('text', usetex=True)
+
+    plt.rc('text', usetex=find_executable('latex'))
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", plt.cm.Dark2.colors)
 
     # force epochs to integers

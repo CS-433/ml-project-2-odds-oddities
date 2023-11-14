@@ -35,15 +35,19 @@ class RoadDataset(Dataset):
         image = np.array(Image.fromarray((self.images[i] * 255).astype(np.uint8)).resize((512, 512))) / 255
         trimap = np.array(Image.fromarray((self.masks[i] * 255).astype(np.uint8)).resize((512, 512)))
         mask = np.where(trimap > 128, 1, 0)
+        
+        image = image.astype(np.float32)    # Previous division creates float64 by default, but augmentations can only handle one of [uint8, float32]
+        mask = mask.astype(np.uint8)        # Mask values are [0,1] so uint8 is more reasonable: np.uint32 -> np.uint8
+        
+        if self.transform:
+            # Apply same transformation to image and mask
+            # NB! This must be done before converting to Pytorch format
+            transformed = self.transform(image=image, mask=mask)
+            image, mask = transformed['image'], transformed['mask']
 
         # convert to Pytorch format HWC -> CHW
         image = np.moveaxis(image, -1, 0)
         mask = np.expand_dims(mask, 0)
-
-        if self.transform:
-            # Apply same transformation to image and mask
-            transformed = self.transform(image=image, mask=mask)
-            return transformed['image'], transformed['mask']
 
         return image, mask
 

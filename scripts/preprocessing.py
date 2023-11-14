@@ -9,6 +9,7 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
+from scripts.plotting import make_image_plottable
 
 IMG_PATCH_SIZE = 16
 IMG_WIDTH = 400
@@ -77,47 +78,25 @@ def get_class(array: np.ndarray) -> int:
     return int(np.mean(array) > foreground_threshold)
 
 
-def get_patched_array(array: np.ndarray, step: int) -> np.ndarray:
+def get_patched_array(array: np.ndarray) -> np.ndarray:
     """
     As the goal is to return label for 16x16 pixel patches, this function helps to
         patch the ground truth or prediction using this logic
 
-    :param array: of shape (x, x)
-    :param step: of size
-    :return:
+    :param array: of shape (1, x, x) or (x, x)
+    :return: same size array with same classification value for the patch
     """
+    # function name is misleading, but (1, x, x) -> (x, x)
+    array = make_image_plottable(array)
     patched_img = np.zeros(array.shape)
 
-    for x in range(0, array.shape[0], step):
-        for y in range(0, array.shape[1], step):
-            patched_img[y:y+step, x:x+step] = get_class(array[y:y+step, x:x+step])
+    for x in range(0, array.shape[0], IMG_PATCH_SIZE):
+        for y in range(0, array.shape[1], IMG_PATCH_SIZE):
+            patched_img[y:y+IMG_PATCH_SIZE, x:x+IMG_PATCH_SIZE] = (
+                get_class(array[y:y+IMG_PATCH_SIZE, x:x+IMG_PATCH_SIZE])
+            )
 
     return patched_img
 
-
-def get_patched_f1(output: np.ndarray, target: np.ndarray, side_length: int = 16) -> float:
-    """
-    Return the f1 score based on the patched logic. As the classification task
-        requires label for every 16x16 patch, we need to calculate the final
-        f1 using the very same logic.
-
-    :param output: with predicted labels for each pixel
-    :param target: ground truth
-    :param side_length: usually 16 pixels
-    :return: f1 score in [0, 1]
-    """
-    block_shape = (side_length, side_length)
-    # calculate the number of blocks we should have
-    num_blocks = int((target.shape[0] / side_length) ** 2)
-
-    output_blocks = (view_as_blocks(output, block_shape=block_shape).
-                     reshape(num_blocks, side_length, side_length))
-    target_blocks = (view_as_blocks(target, block_shape=block_shape).
-                     reshape(num_blocks, side_length, side_length))
-
-    target_labels = [get_class(target_block) for target_block in target_blocks]
-    output_labels = [get_class(output_block) for output_block in output_blocks]
-
-    return f1_score(target_labels, output_labels)
 
 

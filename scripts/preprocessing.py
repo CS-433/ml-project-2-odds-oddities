@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 import albumentations as A
 
+from scripts.array_manipulations import simplify_array
 
 IMG_PATCH_SIZE = 16
 IMG_WIDTH = 400
@@ -74,23 +75,35 @@ def split_data(images_path: str, test_size: float):
     return train_test_split(image_paths, mask_paths, test_size=test_size)
 
 
-def get_patched_array(array: np.ndarray, step: int) -> np.ndarray:
+def get_class(array: np.ndarray) -> int:
+    """
+    Based on the specified threshold (by professors) assign the array to
+        either foreground/road (1) or background (0)
+
+    :param array: usually a block with shape (16, 16)
+    :return: {0, 1}
+    """
+    # percentage of pixels > 1 required to assign a foreground label to a patch
+    foreground_threshold = 0.25
+    return int(np.mean(array) > foreground_threshold)
+
+
+def get_patched_array(array: np.ndarray) -> np.ndarray:
     """
     As the goal is to return label for 16x16 pixel patches, this function helps to
         patch the ground truth or prediction using this logic
 
-    :param array: of shape (x, x)
-    :param step: of size
-    :return:
+    :param array: of shape (1, x, x) or (x, x)
+    :return: same size array with same classification value for the patch
     """
+    # function name is misleading, but (1, x, x) -> (x, x)
+    array = simplify_array(array)
     patched_img = np.zeros(array.shape)
-    foreground_threshold = 0.25  # percentage of pixels > 1 required to assign a foreground label to a patch
 
-    for x in range(0, array.shape[0], step):
-        for y in range(0, array.shape[1], step):
-            patch_mean = np.mean(array[y:y+step, x:x+step])
-            patched_img[y:y+step, x:x+step] = 1 if patch_mean > foreground_threshold else 0
+    for x in range(0, array.shape[0], IMG_PATCH_SIZE):
+        for y in range(0, array.shape[1], IMG_PATCH_SIZE):
+            patched_img[y:y+IMG_PATCH_SIZE, x:x+IMG_PATCH_SIZE] = (
+                get_class(array[y:y+IMG_PATCH_SIZE, x:x+IMG_PATCH_SIZE])
+            )
 
     return patched_img
-
-

@@ -28,15 +28,15 @@ def _train_epoch(model, device, dataloader, criterion, optimizer) -> (float, flo
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        outputs = model(inputs.float())
-        loss = criterion(outputs, labels.float())
+        logits = model(inputs.float())
+        loss = criterion(logits, labels.float())
         loss.backward()
         optimizer.step()
 
         # calculate metrics
         running_loss += loss.item()
 
-        tp, fp, fn, tn = smp.metrics.get_stats(outputs, labels, mode='binary', threshold=0.5)
+        tp, fp, fn, tn = smp.metrics.get_stats(logits.sigmoid(), labels, mode='binary', threshold=0.5)
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction='micro-imagewise')
         running_f1 += f1_score.item()
 
@@ -65,13 +65,13 @@ def _valid_epoch(model, device, dataloader, criterion) -> (float, float):
         inputs, labels = inputs.to(device), labels.to(device)
 
         # predict
-        outputs = model(inputs.float())
+        logits = model(inputs.float())
 
         # calculate metrics
-        loss = criterion(outputs, labels.float())
+        loss = criterion(logits, labels.float())
         running_loss += loss.item()
 
-        tp, fp, fn, tn = smp.metrics.get_stats(outputs, labels, mode='binary', threshold=0.5)
+        tp, fp, fn, tn = smp.metrics.get_stats(logits.sigmoid(), labels, mode='binary', threshold=0.5)
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction='micro-imagewise')
         running_f1 += f1_score.item()
 

@@ -2,6 +2,7 @@
 from typing import Union
 
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
 
@@ -14,7 +15,14 @@ def _is_chw(array: np.ndarray) -> bool:
     return array.shape[0] < array.shape[1]
 
 
-def make_image_plottable(image: np.ndarray) -> np.ndarray:
+def make_image_plottable(image: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    """
+
+    :param image:
+    :return:
+    """
+    image = image.numpy().squeeze() if isinstance(image, torch.Tensor) else image
+
     if _is_color_image(image) and _is_chw(image):
         return image.transpose(1, 2, 0)
     elif not _is_color_image(image) and _is_chw(image):

@@ -2,6 +2,7 @@ import numpy as np
 from skimage.util import view_as_blocks
 from sklearn.metrics import f1_score
 
+from scripts.plotting import make_image_plottable
 from scripts.preprocessing import get_class
 
 
@@ -16,6 +17,8 @@ def get_patched_f1(output: np.ndarray, target: np.ndarray, side_length: int = 16
     :param side_length: usually 16 pixels
     :return: f1 score in [0, 1]
     """
+    output, target = make_image_plottable(output), make_image_plottable(target)
+
     block_shape = (side_length, side_length)
     # calculate the number of blocks we should have
     num_blocks = int((target.shape[0] / side_length) ** 2)
@@ -38,7 +41,7 @@ def get_correct_mask(label: np.ndarray, predicted: np.ndarray) -> np.ndarray:
 
     image = np.zeros((shape[0], shape[1], 3), dtype=np.uint8)
 
-    image[bool_array] = [0, 100, 0]  # green
-    image[~bool_array] = [185, 14, 10]  # red
+    image[bool_array] = [0, 127, 45]  # green
+    image[~bool_array] = [227, 6, 19]  # red
 
     return image

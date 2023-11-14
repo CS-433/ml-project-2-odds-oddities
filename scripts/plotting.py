@@ -5,6 +5,9 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
+import matplotlib_latex_bridge as mlb
+
+mlb.setup_page(**mlb.formats.article_letterpaper_10pt_singlecolumn)
 
 
 def _is_color_image(array: np.ndarray) -> bool:

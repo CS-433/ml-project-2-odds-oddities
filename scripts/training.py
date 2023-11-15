@@ -82,7 +82,7 @@ def _train_epoch(model, dataloader, criterion, optimizer, epoch) -> (float, floa
 
         stream.set_description(
             "Epoch: {epoch}. Train.      {metric_monitor}".format(
-                epoch=epoch,
+                epoch=(3 - len(str(epoch))) * " " + str(epoch),  # for better alignment,
                 metric_monitor=metric_monitor
             )
         )
@@ -124,8 +124,12 @@ def _valid_epoch(model, dataloader, criterion, epoch) -> (float, float):
         metric_monitor.update("Loss", loss.item())
         metric_monitor.update("f1", f1_score.item())
 
+        epoch_str = (3 - len(str(epoch))) * " " + str(epoch)  # for better alignment
         stream.set_description(
-            "Epoch: {epoch}. Validation. {metric_monitor}".format(epoch=epoch, metric_monitor=metric_monitor)
+            "Epoch: {epoch}. Validation. {metric_monitor}".format(
+                epoch=(3 - len(str(epoch))) * " " + str(epoch),  # for better alignment,
+                metric_monitor=metric_monitor
+            )
         )
 
     return metric_monitor.averages()

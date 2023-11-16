@@ -2,18 +2,13 @@
 import os
 
 import numpy as np
-from PIL import Image
+
 from matplotlib import image as mpimg
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
-import albumentations as A
-
 from scripts.array_manipulations import simplify_array
 
 IMG_PATCH_SIZE = 16
-IMG_WIDTH = 400
-IMG_HEIGHT = 400
-N_PATCHES_PER_IMAGE = (IMG_WIDTH / IMG_PATCH_SIZE) * (IMG_HEIGHT / IMG_PATCH_SIZE)
 
 
 class RoadDataset(Dataset):
@@ -24,22 +19,19 @@ class RoadDataset(Dataset):
     :param mask_paths: local absolute path of ground truths
     """
 
-    def __init__(self, image_paths, mask_paths, transform=None):
+    def __init__(self, image_paths, mask_paths=None, transform=None):
         # read images in
         self.images = [mpimg.imread(path) for path in image_paths]
-        self.masks = [mpimg.imread(path) for path in mask_paths]
+        self.masks = [mpimg.imread(path) for path in mask_paths] if mask_paths else None
         self.transform = transform
 
     def __getitem__(self, i):
-        image = np.array(Image.fromarray((self.images[i] * 255).astype(np.uint8)).resize((512, 512))) / 255
-        trimap = np.array(Image.fromarray((self.masks[i] * 255).astype(np.uint8)).resize((512, 512)))
-        mask = np.where(trimap > 128, 1, 0)
-        
-        image = image.astype(np.float32)    # augmentations can only handle one of [uint8, float32]
-        mask = mask.astype(np.uint8)        # values are {0,1} so uint8 is more reasonable: np.uint32 -> np.uint8
-        
+        image = self.images[i]
+        # if no mask use dummy mask
+        mask = np.where(self.masks[i] >= 0.5, 1, 0).astype(np.uint8) if self.masks else np.zeros(image.shape)
+
         if self.transform:
-            # Apply same transformation to image and mask
+            # apply same transformation to image and mask
             # NB! This must be done before converting to Pytorch format
             transformed = self.transform(image=image, mask=mask)
             image, mask = transformed['image'], transformed['mask']
@@ -56,7 +48,7 @@ class RoadDataset(Dataset):
 
 def split_data(images_path: str, test_size: float):
     """
-    Split list of absolute paths to training and test data by using sklearn.
+    Split list of absolute paths to train and test data by using sklearn.
 
     :param images_path: absolute path of the parent directory of images
     :param test_size: value [0, 1]
@@ -76,7 +68,7 @@ def split_data(images_path: str, test_size: float):
 def get_class(array: np.ndarray) -> int:
     """
     Based on the specified threshold (by professors) assign the array to
-        either foreground/road (1) or background (0)
+        either foreground/road (1) or background (0).
 
     :param array: usually a block with shape (16, 16)
     :return: {0, 1}

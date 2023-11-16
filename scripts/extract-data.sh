@@ -25,7 +25,8 @@ for subzip in "$RAW_DATA_PATH"/*.zip; do
     fi
 done
 
-# flatten test_set_images
+# flatten test
+# TODO: rename 'test_set_images' to 'test' and 'training' to 'train'
 for subdir in "$RAW_DATA_PATH/test_set_images"/*/; do
     if [ "$(ls -A "$subdir" | wc -l)" -eq 1 ]; then
         mv "${subdir}"* "$RAW_DATA_PATH/test_set_images/"

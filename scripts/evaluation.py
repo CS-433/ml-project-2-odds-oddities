@@ -1,9 +1,14 @@
 """evaluation.py: helper scripts for evaluation."""
+from typing import Union
+
 import numpy as np
 import torch
+from skimage.util import view_as_blocks
 
 from sklearn.metrics import f1_score
-from scripts.preprocessing import get_class, get_patched_array
+
+from scripts.array_manipulations import simplify_array
+from scripts.preprocessing import get_class, get_patched_classification
 
 
 @torch.no_grad()
@@ -32,25 +37,23 @@ def get_patched_f1(output: np.ndarray, target: np.ndarray) -> float:
     :param target: ground truth
     :return: f1 score in [0, 1]
     """
-    output_blocks = get_patched_array(output)
-    target_blocks = get_patched_array(target)
+    output_patches = get_image_as_patches_array(output)
+    target_patches = get_image_as_patches_array(target)
 
-    target_labels = [get_class(target_block) for target_block in target_blocks]
-    output_labels = [get_class(output_block) for output_block in output_blocks]
+    output_labels = [get_class_by_patch(output_block) for output_block in output_patches]
+    target_labels = [get_class_by_patch(target_block) for target_block in target_patches]
 
-    return f1_score(target_labels, output_labels)
+    # flatten the array to (N, 1)
+    flat_target_labels = np.concatenate(np.array(target_labels)).ravel().tolist()
+    flat_output_labels = np.concatenate(np.array(output_labels)).ravel().tolist()
+
+    return f1_score(flat_target_labels, flat_output_labels)
 
 
-def get_class_by_patch(array: np.ndarray) -> list:
-    """
-    Return classification results {0, 1} per patch for the whole image.
-
-    :param array: of shape (height, width) and height=width
-    :return: list with values in {0, 1} for (height / 16) * (width / 16) samples
-    """
-    blocks = get_patched_array(array)
-    labels = [get_class(block) for block in blocks]
-    return labels
+def get_image_as_patches_array(image: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    """TODO: update"""
+    patches = view_as_blocks(simplify_array(image), (16, 16))
+    return patches.reshape(-1, patches.shape[2], patches.shape[3])
 
 
 def get_correct_mask(label: np.ndarray, predicted: np.ndarray) -> np.ndarray:
@@ -70,6 +73,19 @@ def get_correct_mask(label: np.ndarray, predicted: np.ndarray) -> np.ndarray:
     image[~bool_array] = [227, 6, 19]  # red
 
     return image
+
+
+def get_class_by_patch(array: np.ndarray) -> list:
+    """
+    Return classification results {0, 1} per patch for the whole image.
+
+    :param array: of shape (height, width) and height=width
+    :return: list with values in {0, 1} for (height / 16) * (width / 16) samples
+    """
+    patches = view_as_blocks(simplify_array(array), (16, 16))
+    patches_array = patches.reshape(-1, patches.shape[2], patches.shape[3])
+    labels = [get_class(block) for block in patches_array]
+    return labels
 
 
 def get_test_f1(model, dataloader) -> float:

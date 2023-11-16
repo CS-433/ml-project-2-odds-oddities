@@ -86,7 +86,7 @@ def get_class(array: np.ndarray) -> int:
     return int(np.mean(array) > foreground_threshold)
 
 
-def get_patched_array(array: np.ndarray) -> np.ndarray:
+def get_patched_classification(array: np.ndarray) -> np.ndarray:
     """
     As the goal is to return label for 16x16 pixel patches, this function helps to
         patch the ground truth or prediction using this logic

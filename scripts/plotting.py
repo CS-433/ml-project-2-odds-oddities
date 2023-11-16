@@ -9,7 +9,7 @@ from distutils.spawn import find_executable
 
 from scripts.array_manipulations import simplify_array
 from scripts.evaluation import get_patched_f1, get_correct_mask, get_prediction
-from scripts.preprocessing import get_patched_array
+from scripts.preprocessing import get_patched_classification
 
 
 def plot_images(axis: bool = True, tight_layout: bool = False, **images):
@@ -101,8 +101,8 @@ def plot_n_predictions(
 
         extra_plots = {}
         if is_patched:
-            extra_plots['ground_truth_16x16'] = get_patched_array(label)
-            extra_plots['predicted_16x16'] = get_patched_array(predicted)
+            extra_plots['ground_truth_16x16'] = get_patched_classification(label)
+            extra_plots['predicted_16x16'] = get_patched_classification(predicted)
         if is_comparison:
             extra_plots['comparison'] = get_correct_mask(
                 extra_plots['ground_truth_16x16'], extra_plots['predicted_16x16']

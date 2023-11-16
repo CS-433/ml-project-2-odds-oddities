@@ -123,7 +123,7 @@ def save_csv_aicrowd(filename, model):
     """
     ROOT_PATH = os.path.normpath(os.getcwd() + os.sep + os.pardir)
     ai_crowd_directory = os.path.join(ROOT_PATH, 'data', 'raw', 'test')
-    ai_crowd_paths = [os.path.join(ai_crowd_directory, image) for image in sorted(os.listdir(ai_crowd_directory))]
+    ai_crowd_paths = [os.path.join(ai_crowd_directory, f'test_{i + 1}.png') for i in range(50)]
 
     ai_crowd_dataset = RoadDataset(ai_crowd_paths)
     ai_crowd_dataloader = DataLoader(ai_crowd_dataset)

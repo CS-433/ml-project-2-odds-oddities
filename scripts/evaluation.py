@@ -55,7 +55,12 @@ def get_patched_f1(output: np.ndarray, target: np.ndarray) -> float:
 
 
 def get_image_as_patches_array(image: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
-    """TODO: update"""
+    """
+    Take the image of arbitrary size and convert it to array of 16x16 patches.
+
+    :param image: of arbitrary shape (simplify array can handle it)
+    :return: array of shape (N, 16, 16)
+    """
     patches = view_as_blocks(simplify_array(image), (16, 16))
     return patches.reshape(-1, patches.shape[2], patches.shape[3])
 

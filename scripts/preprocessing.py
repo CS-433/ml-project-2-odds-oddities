@@ -1,4 +1,5 @@
 """preprocessing.py: helper functions and Class for preprocessing."""
+import copy
 import os
 
 import numpy as np
@@ -41,6 +42,14 @@ class RoadDataset(Dataset):
         mask = np.expand_dims(mask, 0)
 
         return image, mask
+
+    def set_tf(self, transform):
+        """Used for transformations.ipynb, where we want to set the transforms
+            dynamically for train and validation. This way we can keep the original
+            object and return a deepcopy with new transform."""
+        copy_instance = copy.deepcopy(self)
+        copy_instance.transform = transform
+        return copy_instance
 
     def __len__(self):
         return len(self.images)

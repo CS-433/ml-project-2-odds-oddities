@@ -62,7 +62,11 @@ def split_data(images_path: str, test_size: float):
     image_paths = [os.path.join(image_directory, image) for image in sorted(os.listdir(image_directory))]
     mask_paths = [os.path.join(labels_directory, image) for image in sorted(os.listdir(labels_directory))]
 
-    return train_test_split(image_paths, mask_paths, test_size=test_size)
+    # All images in train set, none in test
+    if test_size == 0:
+        return image_paths, [], mask_paths, []
+    else:
+        return train_test_split(image_paths, mask_paths, test_size=test_size)
 
 
 def get_class(array: np.ndarray) -> int:

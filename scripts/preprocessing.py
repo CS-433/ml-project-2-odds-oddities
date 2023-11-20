@@ -56,7 +56,7 @@ def split_data(images_path: str, test_size: float):
     """
     # specify image and ground truth full path
     image_directory = os.path.join(images_path, "images")
-    labels_directory = os.path.join(images_path, "groundtruth")
+    labels_directory = os.path.join(images_path, "masks")
 
     # specify absolute paths for all files
     image_paths = [os.path.join(image_directory, image) for image in sorted(os.listdir(image_directory))]

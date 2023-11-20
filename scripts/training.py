@@ -43,7 +43,7 @@ class MetricMonitor:
         )
 
 
-def _train_epoch(model, dataloader, criterion, optimizer, epoch) -> (float, float):
+def _train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch) -> (float, float):
     """
     Train the model and return epoch loss and average f1 score.
 
@@ -51,6 +51,7 @@ def _train_epoch(model, dataloader, criterion, optimizer, epoch) -> (float, floa
     :param dataloader: with images
     :param criterion: loss function
     :param optimizer: some SGD implementation
+    :param scheduler: for optimizing learning rate
     :param epoch: current epoch
     :return: average loss, average f1 score
     """
@@ -73,6 +74,7 @@ def _train_epoch(model, dataloader, criterion, optimizer, epoch) -> (float, floa
         loss = criterion(logits, labels.float())
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         tp, fp, fn, tn = smp.metrics.get_stats(logits.sigmoid(), labels, mode='binary', threshold=0.5)
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction='micro-imagewise')
@@ -150,7 +152,7 @@ def setup_seed(seed: int, cuda: bool = False):
     torch.backends.cudnn.deterministic = True
 
 
-def train_model(model, dataloaders, criterion, optimizer, num_epochs) -> tuple:
+def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs) -> tuple:
     """
     Train model for number of epochs and calculate loss and f1.
 
@@ -158,6 +160,7 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs) -> tuple:
     :param dataloaders: tuple of dataloaders with images (train and validation)
     :param criterion: loss function
     :param optimizer: some SGD implementation
+    :param scheduler: for optimizing learning rate
     :param num_epochs:
     :return: lists of train_losses, valid_losses, train_f1s, valid_f1s
     """
@@ -170,7 +173,7 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs) -> tuple:
 
     for i in range(num_epochs):
 
-        train_loss, train_f1 = _train_epoch(model, train_loader, criterion, optimizer, i + 1)
+        train_loss, train_f1 = _train_epoch(model, train_loader, criterion, optimizer, scheduler, i + 1)
         valid_loss, val_f1 = _valid_epoch(model, valid_loader, criterion, i + 1)
 
         train_losses.append(train_loss)

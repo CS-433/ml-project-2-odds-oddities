@@ -1,4 +1,5 @@
 """evaluation.py: helper scripts for evaluation."""
+import json
 import os
 from typing import Union
 
@@ -219,3 +220,18 @@ def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False)
         Image.fromarray(im).save('prediction_' + '%.3d' % image_id + '.png')
 
     return im
+
+
+def get_dict(filepath: str):
+    """Get dictionary from json."""
+    json_file = open(filepath, 'r')
+    data = json.load(json_file)
+    json_file.close()
+    return data
+
+
+def update_json(filepath: str, updated: dict):
+    """Update json based on dictionary."""
+    json_file = open(filepath, 'w+')
+    json_file.write(json.dumps(updated))
+    json_file.close()

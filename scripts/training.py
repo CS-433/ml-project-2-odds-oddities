@@ -1,9 +1,7 @@
 """training.py: helper functions for convenient training."""
 import random
-import time
 from collections import defaultdict
 
-import mouse
 import numpy as np
 import segmentation_models_pytorch as smp
 import torch
@@ -184,20 +182,3 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs)
         valid_f1s.append(val_f1)
 
     return train_losses, valid_losses, train_f1s, valid_f1s
-
-
-def move_mouse():
-    """
-    For Google Colab to avoid disconnecting.
-    Credits: https://www.kaggle.com/c/bengaliai-cv19/discussion/133857
-    """
-    while True:
-        random_row = np.random.random_sample() * 100
-        random_col = np.random.random_sample() * 10
-        random_time = np.random.random_sample()*np.random.random_sample() * 100
-        mouse.wheel(1000)
-        mouse.wheel(-1000)
-        mouse.move(random_row, random_col, absolute=False, duration=0.2)
-        mouse.move(-random_row, -random_col, absolute=False, duration=0.2)
-        mouse.LEFT
-        time.sleep(random_time)

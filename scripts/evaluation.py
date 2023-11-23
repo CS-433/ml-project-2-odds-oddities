@@ -222,16 +222,41 @@ def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False)
     return im
 
 
-def get_dict(filepath: str):
-    """Get dictionary from json."""
-    json_file = open(filepath, 'r')
-    data = json.load(json_file)
-    json_file.close()
-    return data
+class EvaluationMonitor:
 
+    """TODO: update"""
 
-def update_json(filepath: str, updated: dict):
-    """Update json based on dictionary."""
-    json_file = open(filepath, 'w+')
-    json_file.write(json.dumps(updated))
-    json_file.close()
+    files = ['training_f1', 'training_loss', 'validation_f1', 'validation_loss']
+
+    def __init__(self, jsons_path: str):
+        self.metrics = {}
+        self.jsons_path = jsons_path
+
+        for metric in self.files:
+            filepath = os.path.join(jsons_path, f'{metric}.json')
+            self.metrics[metric] = self._get_dict(filepath)
+
+    def get_not_updated_models(self) -> list:
+        """Return the list of models that don't have metrics logged yet."""
+        return [key for key, value in self.metrics['validation_f1'].items() if value == '']
+
+    def update_metrics(self, setup: str, **metrics):
+        """Update the metrics in dictionary."""
+        for name, metric in metrics.items():
+            self.metrics[name][setup] = metric
+
+    def update_jsons(self):
+        """Update json based on dictionary."""
+        for file in self.files:
+            filepath = os.path.join(self.jsons_path, f'{file}.json')
+            json_file = open(filepath, 'w+')
+            json_file.write(json.dumps(self.metrics[file]))
+            json_file.close()
+
+    @staticmethod
+    def _get_dict(filepath: str):
+        """Get dictionary from json."""
+        json_file = open(filepath, 'r')
+        data = json.load(json_file)
+        json_file.close()
+        return data

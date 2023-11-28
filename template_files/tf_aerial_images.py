@@ -218,7 +218,7 @@ def make_img_overlay(img, predicted_img):
 def main(argv=None):  # pylint: disable=unused-argument
     data_dir = "training/"
     train_data_filename = data_dir + "images/"
-    train_labels_filename = data_dir + "groundtruth/"
+    train_labels_filename = data_dir + "masks/"
 
     # Extract it into numpy arrays.
     train_data = extract_data(train_data_filename, TRAINING_SIZE)
@@ -331,7 +331,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         return img_prediction
 
-    # Get a concatenation of the prediction and groundtruth for given input file
+    # Get a concatenation of the prediction and masks for given input file
     def get_prediction_with_groundtruth(filename, image_idx):
         imageid = "satImage_%.3d" % image_idx
         image_filename = filename + imageid + ".png"

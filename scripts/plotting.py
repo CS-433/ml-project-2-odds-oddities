@@ -6,6 +6,7 @@ import torch
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
 from distutils.spawn import find_executable
+from matplotlib.pyplot import cm
 
 from scripts.array_manipulations import simplify_array
 from scripts.evaluation import get_patched_f1, get_correct_mask, get_prediction
@@ -31,6 +32,21 @@ def plot_images(axis: bool = True, tight_layout: bool = False, **images):
         plt.imshow(simplify_array(image), cmap="Greys_r")
     plt.tight_layout() if tight_layout else None
     plt.show()
+
+
+def _post_processing(y_label: str, title: str):
+    """Increase font size and add labels/titles to the charts."""
+    plt.xlabel('epoch', fontsize=16)
+    plt.ylabel(y_label, fontsize=16)
+    if title:
+        plt.title(title, fontsize=20)
+
+    plt.yticks(fontsize=16)
+    plt.xticks(fontsize=16)
+
+    plt.grid(color="#d3d3d3", linestyle="--", linewidth=0.5)
+    plt.legend(fontsize=16)
+    plt.tight_layout()
 
 
 def plot_metric_per_epoch(
@@ -60,17 +76,7 @@ def plot_metric_per_epoch(
     plt.plot(x, train, label='train')
     plt.plot(x, validation, label='validation')
 
-    plt.xlabel('epoch', fontsize=16)
-    plt.ylabel(y_label, fontsize=16)
-    if title:
-        plt.title(title, fontsize=20)
-
-    plt.yticks(fontsize=16)
-    plt.xticks(fontsize=16)
-
-    plt.grid(color="#d3d3d3", linestyle="--", linewidth=0.5)
-    plt.legend(fontsize=16)
-    plt.tight_layout()
+    _post_processing(y_label, title)
 
 
 def plot_n_predictions(
@@ -119,3 +125,41 @@ def plot_n_predictions(
         image_count += 1
         if image_count >= num_images:
             break
+
+
+def plot_cv_per_epoch(
+        y_label: str,
+        title: str = None,
+        is_std: bool = True,
+        **matrices
+):
+    """
+    Plot cross-validation results with std if needed.
+
+    :param y_label: self-explanatory
+    :param title: self-explanatory
+    :param is_std: if True use fill-between
+    :param matrices: kwargs as label=matrix pairs
+    """
+    plt.set_cmap('Set2')
+
+    # use latex whenever possible
+    plt.rc('text', usetex=bool(find_executable('latex')))
+    plt.rcParams["axes.prop_cycle"] = plt.cycler("color", plt.cm.Dark2.colors)
+
+    # force epochs to integers
+    plt.gca().xaxis.set_major_locator(mticker.MultipleLocator(1))
+    plt.gca().xaxis.set_major_locator(plt.MaxNLocator(10))
+    # plt.locator_params(axis='x', nbins=10)
+    colors = cm.rainbow(np.linspace(0, 1, len(matrices)))
+
+    for i, ((name, matrix), color) in enumerate(zip(matrices.items(), colors)):
+        x = np.arange(matrix.shape[1]) + 1
+        mean = matrix.mean(axis=0)
+
+        plt.plot(mean, color=color, label=name)
+        if is_std:
+            std = matrix.std(axis=0)
+            plt.fill_between(x, mean - std, mean + std, alpha=0.5, color=color)
+
+    _post_processing(y_label, title)

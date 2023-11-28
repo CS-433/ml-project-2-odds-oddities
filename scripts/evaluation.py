@@ -1,8 +1,10 @@
 """evaluation.py: helper scripts for evaluation."""
+import json
 import os
 from typing import Union
 
 import numpy as np
+import pandas as pd
 from PIL import Image
 import torch
 from skimage.util import view_as_blocks
@@ -219,3 +221,63 @@ def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False)
         Image.fromarray(im).save('prediction_' + '%.3d' % image_id + '.png')
 
     return im
+
+
+def get_best_f1_per_setup(setup: dict):
+    """Based on the dictionary, return the best f1 per setup."""
+    best_f1s = []
+    std_devs = []
+    setups = list(setup.keys())
+
+    for setup, matrix in setup.items():
+        matrix = np.array(matrix)
+        mean_per_epoch = matrix.mean(axis=0)
+
+        best_epoch = mean_per_epoch.argmax()
+        best_f1 = mean_per_epoch.max()
+
+        best_f1s.append(best_f1)
+        std_devs.append(matrix[:, best_epoch].std())
+
+    data = np.array([best_f1s, std_devs]).T
+
+    return pd.DataFrame(data, index=setups, columns=['top_f1', 'std_dev'])
+
+
+class EvaluationMonitor:
+    """Helper class for storing training and validation loss and f1 scores."""
+
+    files = ['training_f1', 'training_loss', 'validation_f1', 'validation_loss']
+
+    def __init__(self, jsons_path: str):
+        self.metrics = {}
+        self.jsons_path = jsons_path
+
+        for metric in self.files:
+            filepath = os.path.join(jsons_path, f'{metric}.json')
+            self.metrics[metric] = self._get_dict(filepath)
+
+    def get_not_updated_models(self) -> list:
+        """Return the list of models that don't have metrics logged yet."""
+        return [key for key, value in self.metrics['validation_f1'].items() if value == '']
+
+    def update_metrics(self, setup: str, **metrics):
+        """Update the metrics in dictionary."""
+        for name, metric in metrics.items():
+            self.metrics[name][setup] = metric
+
+    def update_jsons(self):
+        """Update json based on dictionary."""
+        for file in self.files:
+            filepath = os.path.join(self.jsons_path, f'{file}.json')
+            json_file = open(filepath, 'w+')
+            json_file.write(json.dumps(self.metrics[file]))
+            json_file.close()
+
+    @staticmethod
+    def _get_dict(filepath: str):
+        """Get dictionary from json."""
+        json_file = open(filepath, 'r')
+        data = json.load(json_file)
+        json_file.close()
+        return data

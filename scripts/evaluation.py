@@ -4,6 +4,7 @@ import os
 from typing import Union
 
 import numpy as np
+import pandas as pd
 from PIL import Image
 import torch
 from skimage.util import view_as_blocks
@@ -222,9 +223,29 @@ def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False)
     return im
 
 
-class EvaluationMonitor:
+def get_best_f1_per_setup(setup: dict):
+    """Based on the dictionary, return the best f1 per setup."""
+    best_f1s = []
+    std_devs = []
+    setups = list(setup.keys())
 
-    """TODO: update"""
+    for setup, matrix in setup.items():
+        matrix = np.array(matrix)
+        mean_per_epoch = matrix.mean(axis=0)
+
+        best_epoch = mean_per_epoch.argmax()
+        best_f1 = mean_per_epoch.max()
+
+        best_f1s.append(best_f1)
+        std_devs.append(matrix[:, best_epoch].std())
+
+    data = np.array([best_f1s, std_devs]).T
+
+    return pd.DataFrame(data, index=setups, columns=['top_f1', 'std_dev'])
+
+
+class EvaluationMonitor:
+    """Helper class for storing training and validation loss and f1 scores."""
 
     files = ['training_f1', 'training_loss', 'validation_f1', 'validation_loss']
 

@@ -276,7 +276,7 @@ class EvaluationMonitor:
             json_file.close()
 
     def _get_dict(self, filepath: str):
-        """Get dictionary from json. If necessary convert strings with '-'
+        """Get dictionary from json. If necessary convert strings with '+'
             (combination in setup) to tuples."""
         json_file = open(filepath, 'r')
         data = json.load(json_file)
@@ -285,16 +285,16 @@ class EvaluationMonitor:
 
     @staticmethod
     def _tuple_key_to_string(data: dict) -> dict:
-        """Convert dictionary keys from the instance of tuple to strings concatenated with '-'.
+        """Convert dictionary keys from the instance of tuple to strings concatenated with '+'.
             It's necessary due to json-s incapability to handle tuples."""
         if any(isinstance(key, tuple) for key in data.keys()):
-            return {'-'.join(key): value for key, value in data.items()}
+            return {'+'.join(key): value for key, value in data.items()}
         return data
 
     @staticmethod
     def _string_key_to_tuple(data: dict) -> dict:
-        """Convert dictionary keys from the instance of string concatenated with '-' to tuple.
+        """Convert dictionary keys from the instance of string concatenated with '+' to tuple.
             String is necessary due to json-s incapability with tuples."""
-        if any('-' in key for key in data.keys()):
-            return {tuple(key.split('-')): value for key, value in data.items()}
+        if any('+' in key for key in data.keys()):
+            return {tuple(key.split('+')): value for key, value in data.items()}
         return data

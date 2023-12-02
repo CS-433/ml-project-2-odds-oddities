@@ -2747,6 +2747,6 @@
       0.8701059089766608
     ]
   ],
-  "efficientnet-b7+DeepLabV3": [],
-  "efficientnet-b7+UnetPlusPlus": []
+  "efficientnet-b4+UnetPlusPlus": [],
+  "efficientnet-b4+DeepLabV3": []
 }

@@ -259,7 +259,7 @@ class EvaluationMonitor:
 
     def get_not_updated_models(self) -> list:
         """Return the list of models that don't have metrics logged yet."""
-        return [key for key, value in self.metrics['validation_f1'].items() if value == '']
+        return [key for key, value in self.metrics['validation_f1'].items() if not value]
 
     def update_metrics(self, setup: str, **metrics):
         """Update the metrics in dictionary."""
@@ -271,13 +271,30 @@ class EvaluationMonitor:
         for file in self.files:
             filepath = os.path.join(self.jsons_path, f'{file}.json')
             json_file = open(filepath, 'w+')
-            json_file.write(json.dumps(self.metrics[file]))
+            data = self._tuple_key_to_string(self.metrics[file])
+            json_file.write(json.dumps(data))
             json_file.close()
 
-    @staticmethod
-    def _get_dict(filepath: str):
-        """Get dictionary from json."""
+    def _get_dict(self, filepath: str):
+        """Get dictionary from json. If necessary convert strings with '+'
+            (combination in setup) to tuples."""
         json_file = open(filepath, 'r')
         data = json.load(json_file)
         json_file.close()
+        return self._string_key_to_tuple(data)
+
+    @staticmethod
+    def _tuple_key_to_string(data: dict) -> dict:
+        """Convert dictionary keys from the instance of tuple to strings concatenated with '+'.
+            It's necessary due to json-s incapability to handle tuples."""
+        if any(isinstance(key, tuple) for key in data.keys()):
+            return {'+'.join(key): value for key, value in data.items()}
+        return data
+
+    @staticmethod
+    def _string_key_to_tuple(data: dict) -> dict:
+        """Convert dictionary keys from the instance of string concatenated with '+' to tuple.
+            String is necessary due to json-s incapability with tuples."""
+        if any('+' in key for key in data.keys()):
+            return {tuple(key.split('+')): value for key, value in data.items()}
         return data

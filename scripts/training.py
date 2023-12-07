@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 class MetricMonitor:
     """
-    Taken from examples of Albumentation:
+    Inspired from examples of Albumentation:
         https://albumentations.ai/docs/examples/pytorch_classification/
     """
     def __init__(self, float_precision=3):
@@ -43,7 +43,7 @@ class MetricMonitor:
         )
 
 
-def _train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch) -> (float, float):
+def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwargs) -> (float, float):
     """
     Train the model and return epoch loss and average f1 score.
 
@@ -53,10 +53,12 @@ def _train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch) -> (
     :param optimizer: some SGD implementation
     :param scheduler: for optimizing learning rate
     :param epoch: current epoch
+    :param kwargs: used for saving the predictions for ensembling
     :return: average loss, average f1 score
     """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    prediction_monitor = kwargs.get('monitor')
 
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.train()
 
     metric_monitor = MetricMonitor()
@@ -76,6 +78,8 @@ def _train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch) -> (
         optimizer.step()
         scheduler.step()
 
+        prediction_monitor.update(logits, labels, 'training') if prediction_monitor else None
+
         tp, fp, fn, tn = smp.metrics.get_stats(logits.sigmoid(), labels, mode='binary', threshold=0.5)
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction='micro-imagewise')
 
@@ -93,7 +97,7 @@ def _train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch) -> (
 
 
 @torch.no_grad()
-def _valid_epoch(model, dataloader, criterion, epoch) -> (float, float):
+def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float):
     """
     Validate the model performance by calculating epoch loss and average f1 score.
 
@@ -101,8 +105,11 @@ def _valid_epoch(model, dataloader, criterion, epoch) -> (float, float):
     :param dataloader: with validation fold of images
     :param criterion: loss function
     :param epoch: current epoch
+    :param kwargs: used for saving the predictions for ensembling
     :return: average loss, average f1 score
     """
+    prediction_monitor = kwargs.get('monitor')
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.eval()
 
@@ -116,6 +123,9 @@ def _valid_epoch(model, dataloader, criterion, epoch) -> (float, float):
 
         # predict
         logits = model(inputs.float())
+
+        # save predictions and labels down to monitor (JSON eventually)
+        prediction_monitor.update(logits, labels, 'validation') if prediction_monitor else None
 
         # calculate metrics
         loss = criterion(logits, labels.float())
@@ -173,8 +183,12 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs)
 
     for i in range(num_epochs):
 
-        train_loss, train_f1 = _train_epoch(model, train_loader, criterion, optimizer, scheduler, i + 1)
-        valid_loss, val_f1 = _valid_epoch(model, valid_loader, criterion, i + 1)
+        train_loss, train_f1 = train_epoch(
+            model, train_loader, criterion, optimizer, scheduler, i + 1
+        )
+        valid_loss, val_f1 = valid_epoch(
+            model, valid_loader, criterion, i + 1
+        )
 
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)

@@ -250,28 +250,28 @@ class EvaluationMonitor:
     files = ['training_f1', 'training_loss', 'validation_f1', 'validation_loss']
 
     def __init__(self, jsons_path: str):
-        self.metrics = {}
         self.jsons_path = jsons_path
+        self.data = {}
 
         for metric in self.files:
             filepath = os.path.join(jsons_path, f'{metric}.json')
-            self.metrics[metric] = self._get_dict(filepath)
+            self.data[metric] = self._get_dict(filepath)
 
     def get_not_updated_models(self) -> list:
         """Return the list of models that don't have metrics logged yet."""
-        return [key for key, value in self.metrics['validation_f1'].items() if not value]
+        return [key for key, value in self.data['validation_f1'].items() if not value]
 
     def update_metrics(self, setup: str, **metrics):
         """Update the metrics in dictionary."""
         for name, metric in metrics.items():
-            self.metrics[name][setup] = metric
+            self.data[name][setup] = metric
 
     def update_jsons(self):
         """Update json based on dictionary."""
         for file in self.files:
             filepath = os.path.join(self.jsons_path, f'{file}.json')
             json_file = open(filepath, 'w+')
-            data = self._tuple_key_to_string(self.metrics[file])
+            data = self._tuple_key_to_string(self.data[file])
             json_file.write(json.dumps(data))
             json_file.close()
 
@@ -298,3 +298,32 @@ class EvaluationMonitor:
         if any('+' in key for key in data.keys()):
             return {tuple(key.split('+')): value for key, value in data.items()}
         return data
+
+
+class PredictionMonitor:
+    """Helper class for storing training and
+        validation predictions for ensembling."""
+
+    attributes = [
+        'training_predictions', 'training_masks',
+        'validation_predictions', 'validation_masks'
+    ]
+
+    def __init__(self):
+        self._model = None
+        self.data = dict((attr, {}) for attr in self.attributes)
+
+    def set_model(self, encoder, decoder):
+        """TODO: update"""
+        self._model = (encoder, decoder)
+
+        for attr in self.attributes:
+            self.data[attr][self._model] = []
+
+    def update(self, predictions: torch.Tensor, masks: torch.Tensor, mode: str):
+        """Update predictions and ground_truth in data to save them into JSON eventually."""
+        mask_matrix = masks.clone().cpu().detach().numpy().tolist()
+        pred_matrix = predictions.clone().cpu().detach().numpy().tolist()
+
+        self.data[f'{mode}_masks'][self._model] += mask_matrix
+        self.data[f'{mode}_predictions'][self._model] += pred_matrix

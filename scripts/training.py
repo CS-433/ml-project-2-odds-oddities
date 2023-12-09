@@ -56,7 +56,7 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwa
     :param kwargs: used for saving the predictions for ensembling
     :return: average loss, average f1 score
     """
-    prediction_monitor = kwargs.get('monitor')
+    ensembler = kwargs.get('ensembler')
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.train()
@@ -78,7 +78,7 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwa
         optimizer.step()
         scheduler.step()
 
-        prediction_monitor.update(logits.sigmoid(), labels, 'training') if prediction_monitor else None
+        ensembler.update(logits.sigmoid(), labels, 'training') if ensembler else None
 
         tp, fp, fn, tn = smp.metrics.get_stats(logits.sigmoid(), labels, mode='binary', threshold=0.5)
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction='micro-imagewise')
@@ -108,7 +108,7 @@ def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float)
     :param kwargs: used for saving the predictions for ensembling
     :return: average loss, average f1 score
     """
-    prediction_monitor = kwargs.get('monitor')
+    ensembler = kwargs.get('ensembler')
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.eval()
@@ -125,7 +125,7 @@ def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float)
         logits = model(inputs.float())
 
         # save predictions and labels down to monitor (JSON eventually)
-        prediction_monitor.update(logits.sigmoid(), labels, 'validation') if prediction_monitor else None
+        ensembler.update(logits.sigmoid(), labels, 'validation') if ensembler else None
 
         # calculate metrics
         loss = criterion(logits, labels.float())
@@ -136,7 +136,6 @@ def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float)
         metric_monitor.update("Loss", loss.item())
         metric_monitor.update("f1", f1_score.item())
 
-        epoch_str = (3 - len(str(epoch))) * " " + str(epoch)  # for better alignment
         stream.set_description(
             "Epoch: {epoch}. Validation. {metric_monitor}".format(
                 epoch=(3 - len(str(epoch))) * " " + str(epoch),  # for better alignment,

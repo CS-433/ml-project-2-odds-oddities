@@ -313,9 +313,8 @@ class EvaluationMonitor:
         return data
 
 
-class PredictionMonitor:
-    """Helper class for storing training and
-        validation predictions for ensembling."""
+class Ensembler:
+    """Helper class for storing training and validation predictions for ensembling."""
 
     attributes = [
         'training_predictions', 'training_masks',
@@ -341,55 +340,18 @@ class PredictionMonitor:
         self.data[f'{mode}_masks'][self._model] += mask_matrix
         self.data[f'{mode}_predictions'][self._model] += pred_matrix
 
-    def get_all_models(self):
-        return list(self.data['training_predictions'].keys())
+    def get_majority_vote(self, mode: str):
+        predictions = self.data[f'{mode}_predictions']
+        arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
+        threshold = len(predictions) // 2
 
-    def _patches_to_classes(self, array: np.ndarray):
-        patched = self._get_patch_array(array)
-        patched_mean = np.mean(patched, axis=1).reshape(-1)
-        return (patched_mean > 0.25).astype(int)
+        return (np.add(*arrays) > threshold).astype(int)
 
-    def _get_ensembling_for_model(
-            self, encoder: str, decoder: str, mode: str,
-            is_binary: bool = True, is_patch: bool = False
-    ) -> tuple:
-        x_raw = self.data[f'{mode}_predictions'][(encoder, decoder)]
-        y_raw = self.data[f'{mode}_masks'][(encoder, decoder)]
+    def get_f1(self, mode: str):
+        # it doesn't matter which one we take
+        ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
 
-        x_arr = np.squeeze(np.array(x_raw), axis=1)
-        y_arr = np.squeeze(np.array(y_raw), axis=1)
+        ground_truth_arr = ground_truth.reshape(-1)
+        predicted_arr = self.get_majority_vote(mode).reshape(-1)
 
-        x_arr = (x_arr >= 0.5).astype(int) if is_binary else x_arr
-
-        if is_patch:
-            x = self._patches_to_classes(x_arr)
-            y = self._patches_to_classes(y_arr)
-        else:
-            x = x_arr.reshape(-1)
-            y = y_arr.reshape(-1)
-
-        return x, y
-
-    @staticmethod
-    def _get_patch_array(array: np.ndarray):
-        pieces = []
-        for img in array:
-            pieces.extend(np.array_split(img, 608 // 16, axis=1))
-        return np.array(pieces).reshape(-1, 16, 16)
-
-    def get_ensembling_for_models(
-            self, models: list, mode: str,
-            is_binary: bool = True, is_patch: bool = False
-    ):
-
-        features = []
-        labels = None
-
-        for encoder, decoder in models:
-            x, y = self._get_ensembling_for_model(encoder, decoder, mode, is_binary, is_patch)
-            features.append(x)
-            labels = y if labels is None else labels
-
-        x = pd.DataFrame(np.array(features).T)
-
-        return x, labels
+        return f1_score(ground_truth_arr, predicted_arr)

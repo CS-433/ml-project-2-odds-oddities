@@ -271,7 +271,6 @@ class EvaluationMonitor:
         for name, metric in metrics.items():
 
             if setup not in self.data[name]:
-                self.data[name] = {}
                 self.data[name][setup] = [[]]
 
             # folds start from zero, add new fold if necessary

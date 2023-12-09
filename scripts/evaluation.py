@@ -266,6 +266,20 @@ class EvaluationMonitor:
         for name, metric in metrics.items():
             self.data[name][setup] = metric
 
+    def update_metrics_by_fold(self, setup: str, fold: int, **metrics):
+        """TODO: update"""
+        for name, metric in metrics.items():
+
+            if setup not in self.data[name]:
+                self.data[name] = {}
+                self.data[name][setup] = [[]]
+
+            # folds start from zero, add new fold if necessary
+            if len(self.data[name][setup]) <= fold:
+                self.data[name][setup].append([])
+
+            self.data[name][setup][fold].append(metric)
+
     def update_jsons(self):
         """Update json based on dictionary."""
         for file in self.files:
@@ -327,3 +341,56 @@ class PredictionMonitor:
 
         self.data[f'{mode}_masks'][self._model] += mask_matrix
         self.data[f'{mode}_predictions'][self._model] += pred_matrix
+
+    def get_all_models(self):
+        return list(self.data['training_predictions'].keys())
+
+    def _patches_to_classes(self, array: np.ndarray):
+        patched = self._get_patch_array(array)
+        patched_mean = np.mean(patched, axis=1).reshape(-1)
+        return (patched_mean > 0.25).astype(int)
+
+    def _get_ensembling_for_model(
+            self, encoder: str, decoder: str, mode: str,
+            is_binary: bool = True, is_patch: bool = False
+    ) -> tuple:
+        x_raw = self.data[f'{mode}_predictions'][(encoder, decoder)]
+        y_raw = self.data[f'{mode}_masks'][(encoder, decoder)]
+
+        x_arr = np.squeeze(np.array(x_raw), axis=1)
+        y_arr = np.squeeze(np.array(y_raw), axis=1)
+
+        x_arr = (x_arr >= 0.5).astype(int) if is_binary else x_arr
+
+        if is_patch:
+            x = self._patches_to_classes(x_arr)
+            y = self._patches_to_classes(y_arr)
+        else:
+            x = x_arr.reshape(-1)
+            y = y_arr.reshape(-1)
+
+        return x, y
+
+    @staticmethod
+    def _get_patch_array(array: np.ndarray):
+        pieces = []
+        for img in array:
+            pieces.extend(np.array_split(img, 608 // 16, axis=1))
+        return np.array(pieces).reshape(-1, 16, 16)
+
+    def get_ensembling_for_models(
+            self, models: list, mode: str,
+            is_binary: bool = True, is_patch: bool = False
+    ):
+
+        features = []
+        labels = None
+
+        for encoder, decoder in models:
+            x, y = self._get_ensembling_for_model(encoder, decoder, mode, is_binary, is_patch)
+            features.append(x)
+            labels = y if labels is None else labels
+
+        x = pd.DataFrame(np.array(features).T)
+
+        return x, labels

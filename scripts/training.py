@@ -78,7 +78,7 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwa
         optimizer.step()
         scheduler.step()
 
-        prediction_monitor.update(logits, labels, 'training') if prediction_monitor else None
+        prediction_monitor.update(logits.sigmoid(), labels, 'training') if prediction_monitor else None
 
         tp, fp, fn, tn = smp.metrics.get_stats(logits.sigmoid(), labels, mode='binary', threshold=0.5)
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction='micro-imagewise')
@@ -125,7 +125,7 @@ def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float)
         logits = model(inputs.float())
 
         # save predictions and labels down to monitor (JSON eventually)
-        prediction_monitor.update(logits, labels, 'validation') if prediction_monitor else None
+        prediction_monitor.update(logits.sigmoid(), labels, 'validation') if prediction_monitor else None
 
         # calculate metrics
         loss = criterion(logits, labels.float())

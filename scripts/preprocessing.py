@@ -15,16 +15,18 @@ IMG_PATCH_SIZE = 16
 class RoadDataset(Dataset):
     """
     Dataset class for preprocessing satellite images.
+    TODO: update
 
     :param image_paths: local absolute path of images
     :param mask_paths: local absolute path of ground truths
     """
 
-    def __init__(self, image_paths, mask_paths=None, transform=None):
+    def __init__(self, image_paths, mask_paths=None, transform=None, preprocess=None):
         # read images in
         self.images = [mpimg.imread(path) for path in image_paths]
         self.masks = [mpimg.imread(path) for path in mask_paths] if mask_paths else None
         self.transform = transform
+        self.preprocess = preprocess
 
     def __getitem__(self, i):
         image = self.images[i]
@@ -40,6 +42,10 @@ class RoadDataset(Dataset):
         # convert to Pytorch format HWC -> CHW
         image = np.moveaxis(image, -1, 0)
         mask = np.expand_dims(mask, 0)
+
+        if self.preprocess:
+            sample = self.preprocess(image=image, mask=mask)
+            image, mask = sample['image'], sample['mask']
 
         return image, mask
 

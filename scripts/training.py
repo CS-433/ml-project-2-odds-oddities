@@ -1,4 +1,5 @@
 """training.py: helper functions for convenient training."""
+import os
 import random
 from collections import defaultdict
 
@@ -194,5 +195,5 @@ def tune_hyperparams(config, encoder: str, decoder: str, datasets: tuple, checkp
 
     _ = train_model(
         model_, (train_loader, valid_loader), criterion_,
-        optimizer_, scheduler_, config["num_epochs"], tune=True
+        optimizer_, scheduler_, int(config["num_epochs"]), tune=True
     )

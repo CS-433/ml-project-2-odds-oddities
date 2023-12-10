@@ -4,6 +4,8 @@ import os
 
 import numpy as np
 
+import albumentations
+
 from matplotlib import image as mpimg
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
@@ -42,10 +44,6 @@ class RoadDataset(Dataset):
         # convert to Pytorch format HWC -> CHW
         image = np.moveaxis(image, -1, 0)
         mask = np.expand_dims(mask, 0)
-
-        if self.preprocess:
-            sample = self.preprocess(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
 
         return image, mask
 

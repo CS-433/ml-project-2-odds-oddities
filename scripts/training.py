@@ -5,42 +5,11 @@ from collections import defaultdict
 import numpy as np
 import segmentation_models_pytorch as smp
 import torch
+from ray import tune
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-
-class MetricMonitor:
-    """
-    Inspired from examples of Albumentation:
-        https://albumentations.ai/docs/examples/pytorch_classification/
-    """
-    def __init__(self, float_precision=3):
-        self.float_precision = float_precision
-        self.metrics = {}
-        self.reset()
-
-    def reset(self):
-        self.metrics = defaultdict(lambda: {"val": 0, "count": 0, "avg": 0})
-
-    def update(self, metric_name, val):
-        metric = self.metrics[metric_name]
-
-        metric["val"] += val
-        metric["count"] += 1
-        metric["avg"] = metric["val"] / metric["count"]
-
-    def averages(self):
-        """Return the average per metric (loss, f1)"""
-        return tuple([metric['avg'] for (metric_name, metric) in self.metrics.items()])
-
-    def __str__(self):
-        return " | ".join(
-            [
-                "{metric_name}: {avg:.{float_precision}f}".format(
-                    metric_name=metric_name, avg=metric["avg"], float_precision=self.float_precision
-                )
-                for (metric_name, metric) in self.metrics.items()
-            ]
-        )
+from scripts.evaluation import MetricMonitor
 
 
 def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwargs) -> (float, float):
@@ -143,7 +112,10 @@ def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float)
             )
         )
 
-    return metric_monitor.averages()
+    loss, f1 = metric_monitor.averages()
+    tune.report(loss=loss, f1=f1) if kwargs.get('tune') else None
+
+    return loss, f1
 
 
 def setup_seed(seed: int, cuda: bool = False):
@@ -161,7 +133,7 @@ def setup_seed(seed: int, cuda: bool = False):
     torch.backends.cudnn.deterministic = True
 
 
-def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs) -> tuple:
+def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, **kwargs) -> tuple:
     """
     Train model for number of epochs and calculate loss and f1.
 
@@ -186,7 +158,7 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs)
             model, train_loader, criterion, optimizer, scheduler, i + 1
         )
         valid_loss, val_f1 = valid_epoch(
-            model, valid_loader, criterion, i + 1
+            model, valid_loader, criterion, i + 1, **kwargs
         )
 
         train_losses.append(train_loss)
@@ -195,3 +167,32 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs)
         valid_f1s.append(val_f1)
 
     return train_losses, valid_losses, train_f1s, valid_f1s
+
+
+def tune_hyperparams(config, encoder: str, decoder: str, datasets: tuple, checkpoint_dir=None):
+
+    train_dataset, val_dataset = datasets
+
+    # Create training and validation loaders by providing current K-Fold train/validation indices to Sampler
+    train_loader = DataLoader(train_dataset, batch_size=config["batch_size"])
+    valid_loader = DataLoader(val_dataset, batch_size=config["batch_size"])
+
+    # Initialize model
+    model_ = smp.create_model(decoder, encoder_name=encoder, encoder_weights='imagenet')
+    criterion_ = config["criterion"]
+    optimizer_ = torch.optim.Adam(model_.parameters(), config["lr"])
+    scheduler_ = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer_,
+        T_max=(len(train_loader.dataset) * config["num_epochs"]) // train_loader.batch_size,
+    )
+
+    if checkpoint_dir:
+        checkpoint = os.path.join(checkpoint_dir, "checkpoint")
+        model_state, optimizer_state = torch.load(checkpoint)
+        model_.load_state_dict(model_state)
+        optimizer_.load_state_dict(optimizer_state)
+
+    _ = train_model(
+        model_, (train_loader, valid_loader), criterion_,
+        optimizer_, scheduler_, config["num_epochs"], tune=True
+    )

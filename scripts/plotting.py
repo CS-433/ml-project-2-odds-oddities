@@ -4,11 +4,11 @@ import torch
 
 import numpy as np
 import matplotlib.ticker as mticker
-from matplotlib import pyplot as plt
 
 from typing import Union
 from distutils.spawn import find_executable
 from matplotlib.pyplot import cm
+from matplotlib import pyplot as plt
 
 from scripts.array_manipulations import simplify_array
 from scripts.evaluation import get_patched_f1, get_correct_mask, get_prediction

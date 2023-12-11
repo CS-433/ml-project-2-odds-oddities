@@ -1,11 +1,12 @@
 """training.py: helper functions for convenient training."""
+import torch
 import random
-from collections import defaultdict
 
 import numpy as np
 import segmentation_models_pytorch as smp
-import torch
+
 from tqdm import tqdm
+from collections import defaultdict
 
 
 class MetricMonitor:
@@ -13,18 +14,20 @@ class MetricMonitor:
     Inspired from examples of Albumentation:
         https://albumentations.ai/docs/examples/pytorch_classification/
     """
-    def __init__(self, float_precision=3):
+    def __init__(self, float_precision: int = 3):
         self.float_precision = float_precision
         self.metrics = {}
         self.reset()
 
     def reset(self):
+        """Reset metrics dictionary."""
         self.metrics = defaultdict(lambda: {"val": 0, "count": 0, "avg": 0})
 
-    def update(self, metric_name, val):
+    def update(self, metric_name: str, value):
+        """Add value to the metric name."""
         metric = self.metrics[metric_name]
 
-        metric["val"] += val
+        metric["val"] += value
         metric["count"] += 1
         metric["avg"] = metric["val"] / metric["count"]
 
@@ -150,7 +153,7 @@ def setup_seed(seed: int, cuda: bool = False):
     """
     Create global seed for torch, numpy and cuda.
 
-    :param seed:
+    :param seed: self-explanatory
     :param cuda: boolean whether to use gpu
     """
     np.random.seed(seed)

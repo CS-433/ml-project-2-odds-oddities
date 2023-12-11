@@ -334,7 +334,7 @@ class Ensembler:
         self.data = dict((attr, {}) for attr in self.attributes)
 
     def set_model(self, encoder, decoder):
-        """TODO: update"""
+        """Set the current model for Ensembler object."""
         self._model = (encoder, decoder)
 
         for attr in self.attributes:
@@ -350,9 +350,9 @@ class Ensembler:
 
     def get_majority_vote(self, mode: str):
         """
-        TODO: str
-        :param mode:
-        :return:
+        Calculate the inference (contained in self.data) according to majority vote.
+
+        :param mode: either 'training' or  'validation'
         """
         predictions = self.data[f'{mode}_predictions']
         arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
@@ -361,7 +361,12 @@ class Ensembler:
         return (np.add(*arrays) > threshold).astype(int)
 
     def get_f1(self, mode: str):
-        # it doesn't matter which one we take
+        """
+        Make the inference and calculate f1 score of the fold.
+
+        :param mode: either 'training' or  'validation'
+        :return: f1 score over the fold
+        """
         ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
 
         ground_truth_arr = ground_truth.reshape(-1)

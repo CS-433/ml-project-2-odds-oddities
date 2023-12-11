@@ -63,4 +63,6 @@ def get_patched_array(array: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
     # calculate the number of blocks we should have
     num_blocks = int((array.shape[0] / PATCH_SIZE) ** 2)
 
-    return view_as_blocks(array, block_shape=block_shape).reshape(num_blocks, PATCH_SIZE, PATCH_SIZE)
+    return view_as_blocks(array, block_shape=block_shape).reshape(
+        num_blocks, PATCH_SIZE, PATCH_SIZE
+    )

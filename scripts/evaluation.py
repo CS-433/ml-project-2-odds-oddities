@@ -274,9 +274,9 @@ class EvaluationMonitor:
         :param fold: starting from 0
         :param metrics: kwargs with metric values
         """
-        for name, metric in metrics.items():
+        setup = (setup, ) if setup == 'ensembling' else tuple(setup.split('+'))
 
-            setup = (setup, ) if setup == 'ensembling' else tuple(setup.split('+'))
+        for name, metric in metrics.items():
 
             if setup not in self.data[name].keys():
                 self.data[name][setup] = [[]]

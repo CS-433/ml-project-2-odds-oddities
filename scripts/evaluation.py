@@ -1,15 +1,15 @@
 """evaluation.py: helper scripts for evaluation."""
 import json
 import os
-from typing import Union
+import torch
 
 import numpy as np
 import pandas as pd
-from PIL import Image
-import torch
-from skimage.util import view_as_blocks
 
+from PIL import Image
+from typing import Union
 from sklearn.metrics import f1_score
+from skimage.util import view_as_blocks
 from torch.utils.data import DataLoader
 
 from scripts.array_manipulations import simplify_array
@@ -121,7 +121,7 @@ def get_test_f1(model, dataloader) -> float:
     return f1_score(target_labels, output_labels)
 
 
-def save_csv_aicrowd(filename, model):
+def save_csv_aicrowd(filename: str, model):
     """
     Save the csv with predictions of the test set. The script assumes that
         you have followed the data extraction pipeline and have directory
@@ -267,14 +267,22 @@ class EvaluationMonitor:
             self.data[name][setup] = metric
 
     def update_metrics_by_fold(self, setup: str, fold: int, **metrics):
-        """TODO: update"""
+        """
+        Add metrics to the data dict based on setup and fold.
+
+        :param setup: name of model as 'encoder+decoder'
+        :param fold: starting from 0
+        :param metrics: kwargs with metric values
+        """
         for name, metric in metrics.items():
 
-            if setup not in self.data[name]:
+            setup = (setup, ) if setup == 'ensembling' else tuple(setup.split('+'))
+
+            if setup not in self.data[name].keys():
                 self.data[name][setup] = [[]]
 
             # folds start from zero, add new fold if necessary
-            if len(self.data[name][setup]) <= fold:
+            while len(self.data[name][setup]) <= fold:
                 self.data[name][setup].append([])
 
             self.data[name][setup][fold].append(metric)
@@ -341,6 +349,11 @@ class Ensembler:
         self.data[f'{mode}_predictions'][self._model] += pred_matrix
 
     def get_majority_vote(self, mode: str):
+        """
+        TODO: str
+        :param mode:
+        :return:
+        """
         predictions = self.data[f'{mode}_predictions']
         arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
         threshold = len(predictions) // 2
@@ -355,3 +368,4 @@ class Ensembler:
         predicted_arr = self.get_majority_vote(mode).reshape(-1)
 
         return f1_score(ground_truth_arr, predicted_arr)
+

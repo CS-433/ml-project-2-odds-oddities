@@ -10,5 +10,11 @@
     "lr": 0.0008,
     "batch_size": 3,
     "criterion": "dice_loss"
+  },
+  "efficientnet-b4+UnetPlusPlus": {
+    "num_epochs": 80,
+    "lr": 0.00085,
+    "batch_size": 3,
+    "criterion": "dice_loss"
   }
 }

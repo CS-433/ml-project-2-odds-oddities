@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 
 from scripts.array_manipulations import simplify_array
 from scripts.inference import get_prediction
-from scripts.preprocessing import get_class, RoadDataset
+from scripts.preprocessing import get_class
 
 
 class MetricMonitor:
@@ -119,50 +119,6 @@ class EvaluationMonitor:
         if any('+' in key for key in data.keys()):
             return {tuple(key.split('+')): value for key, value in data.items()}
         return data
-
-
-class Ensembler:
-    """Helper class for storing training and validation predictions for ensembling."""
-
-    attributes = [
-        'training_predictions', 'training_masks',
-        'validation_predictions', 'validation_masks'
-    ]
-
-    def __init__(self):
-        self._model = None
-        self.data = dict((attr, {}) for attr in self.attributes)
-
-    def set_model(self, encoder, decoder):
-        """TODO: update"""
-        self._model = (encoder, decoder)
-
-        for attr in self.attributes:
-            self.data[attr][self._model] = []
-
-    def update(self, predictions: torch.Tensor, masks: torch.Tensor, mode: str):
-        """Update predictions and ground_truth in data to save them into JSON eventually."""
-        mask_matrix = masks.clone().cpu().detach().numpy().tolist()
-        pred_matrix = predictions.clone().cpu().detach().numpy().tolist()
-
-        self.data[f'{mode}_masks'][self._model] += mask_matrix
-        self.data[f'{mode}_predictions'][self._model] += pred_matrix
-
-    def get_majority_vote(self, mode: str):
-        predictions = self.data[f'{mode}_predictions']
-        arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
-        threshold = len(predictions) // 2
-
-        return (np.add(*arrays) > threshold).astype(int)
-
-    def get_f1(self, mode: str):
-        # it doesn't matter which one we take
-        ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
-
-        ground_truth_arr = ground_truth.reshape(-1)
-        predicted_arr = self.get_majority_vote(mode).reshape(-1)
-
-        return f1_score(ground_truth_arr, predicted_arr)
 
 
 def get_patched_f1(output: np.ndarray, target: np.ndarray) -> float:

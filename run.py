@@ -1,20 +1,15 @@
-"""TODO: specify"""
+"""run.py: Predict using the pretrained models and save it down to csv."""
 import os
 from pathlib import Path
 
-from scripts.inference import load_tuned_models
+from scripts.inference import load_tuned_models, save_csv_aicrowd
 
-
-model_names = [("resnet18", "unet")]
+model_names = [("resnet18", "unet"), ("resnet18", "unet"), ("resnet18", "unet")]
 
 root_path = Path(__file__).parent
-state_dict_root = os.path.join(root_path, "data", "results", "hyperopt")
+state_dict_root = os.path.join(root_path, "data", "results", "final_models")
 
 
 if __name__ == "__main__":
     models = load_tuned_models(model_names, state_dict_root)
-
-    # 1. get inference data one by one (dataloader)
-    # 2. predict for all 3 models
-    # 3. apply ensembling
-    # 4. write down to file
+    save_csv_aicrowd('out.csv', models)

@@ -1,13 +1,70 @@
 """TODO: update"""
 import os
+from pathlib import Path
+
 from PIL import Image
 import numpy as np
 import torch
 
 import segmentation_models_pytorch as smp
+from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
 
 from scripts.preprocessing import RoadDataset, get_class
+
+
+class Ensembler:
+    """Helper class for storing training and validation predictions for ensembling."""
+
+    attributes = [
+        'training_predictions', 'training_masks',
+        'validation_predictions', 'validation_masks'
+    ]
+
+    def __init__(self):
+        self._model = None
+        self.data = dict((attr, {}) for attr in self.attributes)
+        self.inference = {}
+
+    def set_model(self, encoder, decoder):
+        """TODO: update"""
+        self._model = (encoder, decoder)
+
+        for attr in self.attributes:
+            self.data[attr][self._model] = []
+
+    def update(self, predictions: torch.Tensor, masks: torch.Tensor, mode: str):
+        """Update predictions and ground_truth in data to save them into JSON eventually."""
+        mask_matrix = masks.clone().cpu().detach().numpy().tolist()
+        pred_matrix = predictions.clone().cpu().detach().numpy().tolist()
+
+        self.data[f'{mode}_masks'][self._model] += mask_matrix
+        self.data[f'{mode}_predictions'][self._model] += pred_matrix
+
+    def add_inference(self, predictions: np.ndarray, model: str):
+        self.inference[model] = predictions
+
+    def get_majority_vote(self, mode: str = None) -> np.ndarray:
+        """TODO: update."""
+
+        if mode:
+            predictions = self.data[f'{mode}_predictions']
+            arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
+        else:
+            arrays = list(self.inference.values())
+
+        threshold = len(arrays) // 2
+
+        return (np.add(*arrays) > threshold).astype(int)
+
+    def get_f1(self, mode: str):
+        # it doesn't matter which one we take
+        ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
+
+        ground_truth_arr = ground_truth.reshape(-1)
+        predicted_arr = self.get_majority_vote(mode).reshape(-1)
+
+        return f1_score(ground_truth_arr, predicted_arr)
 
 
 @torch.no_grad()
@@ -27,12 +84,12 @@ def get_prediction(model, image) -> np.ndarray:
     return np.where(prediction_sigmoid >= 0.5, 1, 0)
 
 
-def load_tuned_models(model_names: list, root_path):
+def load_tuned_models(model_names: list, directory: str):
     """
-    TODO: update
+    Load the tuned models from the
 
     :param model_names:
-    :param root_path:
+    :param directory: that contains model objects
     :return:
     """
     models = []
@@ -40,9 +97,12 @@ def load_tuned_models(model_names: list, root_path):
 
         model = smp.create_model(decoder, encoder_name=encoder)
 
-        state_dict_path = os.path.join(root_path, f"{encoder}+{decoder}.pth")
+        state_dict_path = os.path.join(directory, f"{encoder}+{decoder}.pth")
         state_dict = torch.load(state_dict_path)["state_dict"]
         model.load_state_dict(state_dict)
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model.to(device)
 
         model.eval()
 
@@ -51,16 +111,16 @@ def load_tuned_models(model_names: list, root_path):
     return models
 
 
-def save_csv_aicrowd(filename, model):
+def save_csv_aicrowd(filename, models):
     """
     Save the csv with predictions of the test set. The script assumes that
         you have followed the data extraction pipeline and have directory
         ../data/raw/test in your project.
 
     :param filename: absolute path for the output csv
-    :param model: used for predictions
+    :param models: used for predictions
     """
-    root = os.path.normpath(os.getcwd() + os.sep + os.pardir)
+    root = Path(__file__).parent.parent  # go 2 dirs back
     ai_crowd_directory = os.path.join(root, "data", "raw", "test")
     ai_crowd_paths = [
         os.path.join(ai_crowd_directory, f"test_{i + 1}.png") for i in range(50)
@@ -69,7 +129,7 @@ def save_csv_aicrowd(filename, model):
     ai_crowd_dataset = RoadDataset(ai_crowd_paths)
     ai_crowd_dataloader = DataLoader(ai_crowd_dataset)
 
-    _masks_to_submission(filename, model, ai_crowd_dataloader)
+    _masks_to_submission(filename, models, ai_crowd_dataloader)
 
 
 def _mask_to_submission_string(image_number: int, prediction: np.ndarray) -> str:
@@ -88,12 +148,12 @@ def _mask_to_submission_string(image_number: int, prediction: np.ndarray) -> str
             yield "{:03d}_{}_{},{}".format(image_number, j, i, label)
 
 
-def _masks_to_submission(filename, model, dataloader):
+def _masks_to_submission(filename, models, dataloader):
     """
     Generate csv from the predictions of the mask.
 
     :param filename: to save the csv (absolute path)
-    :param model: used for prediction
+    :param models: used for prediction
     :param dataloader: with batch_size = 1
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -103,10 +163,20 @@ def _masks_to_submission(filename, model, dataloader):
 
         for img_number, (image, _) in enumerate(dataloader, 1):
             image = image.to(device)
-            predicted = get_prediction(model, image)
+
+            ensembler = Ensembler()
+
+            for i, model in enumerate(models):
+                ensembler.set_model(str(i), str(i))  # as we don't care about the model type
+
+                predicted = get_prediction(model, image)
+                ensembler.add_inference(predicted, str(i))
+
+            final_prediction = ensembler.get_majority_vote()
+
             f.writelines(
                 "{}\n".format(s)
-                for s in _mask_to_submission_string(img_number, predicted)
+                for s in _mask_to_submission_string(img_number, final_prediction)
             )
 
 

@@ -174,26 +174,31 @@ def tune_hyperparams(
     valid_loader = DataLoader(val_dataset, batch_size=config["batch_size"])
 
     # Initialize model
-    model_ = smp.create_model(decoder, encoder_name=encoder, encoder_weights="imagenet")
-    criterion_ = config["criterion"]
-    optimizer_ = torch.optim.Adam(model_.parameters(), config["lr"])
+    model = smp.create_model(decoder, encoder_name=encoder, encoder_weights="imagenet")
+    optimizer = torch.optim.Adam(model.parameters(), config["lr"])
     scheduler_ = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer_,
+        optimizer,
         T_max=(len(train_loader.dataset) * config["num_epochs"])
         // train_loader.batch_size,
     )
 
+    criteria_dict = {
+        'dice_loss': smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True),
+        'focal_loss': smp.losses.FocalLoss(smp.losses.BINARY_MODE)
+    }
+    criterion = criteria_dict[config["criterion"]]
+
     if checkpoint_dir:
         checkpoint = os.path.join(checkpoint_dir, "checkpoint")
         model_state, optimizer_state = torch.load(checkpoint)
-        model_.load_state_dict(model_state)
-        optimizer_.load_state_dict(optimizer_state)
+        model.load_state_dict(model_state)
+        optimizer.load_state_dict(optimizer_state)
 
     _ = train_model(
-        model_,
+        model,
         (train_loader, valid_loader),
-        criterion_,
-        optimizer_,
+        criterion,
+        optimizer,
         scheduler_,
         int(config["num_epochs"]),
         tune=True,

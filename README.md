@@ -28,8 +28,6 @@ sudo chmod +x scripts/extract-data.sh && ./scripts/extract-data.sh
 
 TBD
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 ## Usage
 
@@ -52,8 +50,6 @@ download the raw data and final models before running the script.
 Additionally, keep in mind that the experiments and inference was done on 
 16GB NVIDIA V100 Tensor Core GPU and it might be unfeasible to run the script locally. 
 For that purpose, we've set up a notebook that can be used in e.g. Google Colab.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Contact
 

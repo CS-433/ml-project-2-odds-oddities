@@ -13,9 +13,7 @@ in satellite imagery.
 Use the Pypi package manager to set up the environment.
 
 ```bash
-python3 -m venv .venv && \
-source .venv/bin/activate && \
-pip install -r requirements.txt
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 ```
 
 ### Extract Raw Data

@@ -1,15 +1,15 @@
 """evaluation.py: helper scripts for evaluation."""
 import json
 import os
-from typing import Union
+import torch
 
 import numpy as np
 import pandas as pd
-from PIL import Image
-import torch
-from skimage.util import view_as_blocks
 
+from PIL import Image
+from typing import Union
 from sklearn.metrics import f1_score
+from skimage.util import view_as_blocks
 from torch.utils.data import DataLoader
 
 from scripts.array_manipulations import simplify_array
@@ -121,7 +121,7 @@ def get_test_f1(model, dataloader) -> float:
     return f1_score(target_labels, output_labels)
 
 
-def save_csv_aicrowd(filename, model):
+def save_csv_aicrowd(filename: str, model):
     """
     Save the csv with predictions of the test set. The script assumes that
         you have followed the data extraction pipeline and have directory
@@ -250,34 +250,127 @@ class EvaluationMonitor:
     files = ['training_f1', 'training_loss', 'validation_f1', 'validation_loss']
 
     def __init__(self, jsons_path: str):
-        self.metrics = {}
         self.jsons_path = jsons_path
+        self.data = {}
 
         for metric in self.files:
             filepath = os.path.join(jsons_path, f'{metric}.json')
-            self.metrics[metric] = self._get_dict(filepath)
+            self.data[metric] = self._get_dict(filepath)
 
     def get_not_updated_models(self) -> list:
         """Return the list of models that don't have metrics logged yet."""
-        return [key for key, value in self.metrics['validation_f1'].items() if value == '']
+        return [key for key, value in self.data['validation_f1'].items() if not value]
 
     def update_metrics(self, setup: str, **metrics):
         """Update the metrics in dictionary."""
         for name, metric in metrics.items():
-            self.metrics[name][setup] = metric
+            self.data[name][setup] = metric
+
+    def update_metrics_by_fold(self, setup: str, fold: int, **metrics):
+        """
+        Add metrics to the data dict based on setup and fold.
+
+        :param setup: name of model as 'encoder+decoder'
+        :param fold: starting from 0
+        :param metrics: kwargs with metric values
+        """
+        setup = (setup, ) if setup == 'ensembling' else tuple(setup.split('+'))
+
+        for name, metric in metrics.items():
+
+            if setup not in self.data[name].keys():
+                self.data[name][setup] = [[]]
+
+            # folds start from zero, add new fold if necessary
+            while len(self.data[name][setup]) <= fold:
+                self.data[name][setup].append([])
+
+            self.data[name][setup][fold].append(metric)
 
     def update_jsons(self):
         """Update json based on dictionary."""
         for file in self.files:
             filepath = os.path.join(self.jsons_path, f'{file}.json')
             json_file = open(filepath, 'w+')
-            json_file.write(json.dumps(self.metrics[file]))
+            data = self._tuple_key_to_string(self.data[file])
+            json_file.write(json.dumps(data))
             json_file.close()
 
-    @staticmethod
-    def _get_dict(filepath: str):
-        """Get dictionary from json."""
+    def _get_dict(self, filepath: str):
+        """Get dictionary from json. If necessary convert strings with '+'
+            (combination in setup) to tuples."""
         json_file = open(filepath, 'r')
         data = json.load(json_file)
         json_file.close()
+        return self._string_key_to_tuple(data)
+
+    @staticmethod
+    def _tuple_key_to_string(data: dict) -> dict:
+        """Convert dictionary keys from the instance of tuple to strings concatenated with '+'.
+            It's necessary due to json-s incapability to handle tuples."""
+        if any(isinstance(key, tuple) for key in data.keys()):
+            return {'+'.join(key): value for key, value in data.items()}
         return data
+
+    @staticmethod
+    def _string_key_to_tuple(data: dict) -> dict:
+        """Convert dictionary keys from the instance of string concatenated with '+' to tuple.
+            String is necessary due to json-s incapability with tuples."""
+        if any('+' in key for key in data.keys()):
+            return {tuple(key.split('+')): value for key, value in data.items()}
+        return data
+
+
+class Ensembler:
+    """Helper class for storing training and validation predictions for ensembling."""
+
+    attributes = [
+        'training_predictions', 'training_masks',
+        'validation_predictions', 'validation_masks'
+    ]
+
+    def __init__(self):
+        self._model = None
+        self.data = dict((attr, {}) for attr in self.attributes)
+
+    def set_model(self, encoder, decoder):
+        """Set the current model for Ensembler object."""
+        self._model = (encoder, decoder)
+
+        for attr in self.attributes:
+            self.data[attr][self._model] = []
+
+    def update(self, predictions: torch.Tensor, masks: torch.Tensor, mode: str):
+        """Update predictions and ground_truth in data to save them into JSON eventually."""
+        mask_matrix = masks.clone().cpu().detach().numpy().tolist()
+        pred_matrix = predictions.clone().cpu().detach().numpy().tolist()
+
+        self.data[f'{mode}_masks'][self._model] += mask_matrix
+        self.data[f'{mode}_predictions'][self._model] += pred_matrix
+
+    def get_majority_vote(self, mode: str):
+        """
+        Calculate the inference (contained in self.data) according to majority vote.
+
+        :param mode: either 'training' or  'validation'
+        """
+        predictions = self.data[f'{mode}_predictions']
+        arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
+        threshold = len(predictions) // 2
+
+        return (np.add(*arrays) > threshold).astype(int)
+
+    def get_f1(self, mode: str):
+        """
+        Make the inference and calculate f1 score of the fold.
+
+        :param mode: either 'training' or  'validation'
+        :return: f1 score over the fold
+        """
+        ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
+
+        ground_truth_arr = ground_truth.reshape(-1)
+        predicted_arr = self.get_majority_vote(mode).reshape(-1)
+
+        return f1_score(ground_truth_arr, predicted_arr)
+

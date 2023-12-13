@@ -1,16 +1,20 @@
 """plotting.py: helper functions for plotting."""
-from typing import Union
+import warnings
+import torch
 
 import numpy as np
-import torch
-from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
+
+from typing import Union
 from distutils.spawn import find_executable
 from matplotlib.pyplot import cm
+from matplotlib import pyplot as plt
 
 from scripts.array_manipulations import simplify_array
 from scripts.evaluation import get_patched_f1, get_correct_mask, get_prediction
 from scripts.preprocessing import get_patched_classification
+
+warnings.filterwarnings("ignore")
 
 
 def plot_images(axis: bool = True, tight_layout: bool = False, **images):
@@ -34,18 +38,23 @@ def plot_images(axis: bool = True, tight_layout: bool = False, **images):
     plt.show()
 
 
-def _post_processing(y_label: str, title: str):
+def plot_post_processing(
+        y_label: str = '',
+        x_label: str = 'epoch',
+        title: str = '',
+        legend: bool = True
+):
     """Increase font size and add labels/titles to the charts."""
-    plt.xlabel('epoch', fontsize=16)
+    plt.xlabel(x_label, fontsize=16)
     plt.ylabel(y_label, fontsize=16)
-    if title:
-        plt.title(title, fontsize=20)
+    plt.title(title, fontsize=20)
 
     plt.yticks(fontsize=16)
     plt.xticks(fontsize=16)
 
     plt.grid(color="#d3d3d3", linestyle="--", linewidth=0.5)
-    plt.legend(fontsize=16)
+    if legend:
+        plt.legend(fontsize=16)
     plt.tight_layout()
 
 
@@ -76,7 +85,7 @@ def plot_metric_per_epoch(
     plt.plot(x, train, label='train')
     plt.plot(x, validation, label='validation')
 
-    _post_processing(y_label, title)
+    plot_post_processing(y_label, title)
 
 
 def plot_n_predictions(
@@ -129,6 +138,7 @@ def plot_n_predictions(
 
 def plot_cv_per_epoch(
         y_label: str,
+        x_label: str,
         title: str = None,
         is_std: bool = True,
         **matrices
@@ -137,6 +147,7 @@ def plot_cv_per_epoch(
     Plot cross-validation results with std if needed.
 
     :param y_label: self-explanatory
+    :param x_label: self-explanatory
     :param title: self-explanatory
     :param is_std: if True use fill-between
     :param matrices: kwargs as label=matrix pairs
@@ -147,19 +158,21 @@ def plot_cv_per_epoch(
     plt.rc('text', usetex=bool(find_executable('latex')))
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", plt.cm.Dark2.colors)
 
+    fig, ax = plt.subplots(figsize=(6.4, 4.4))
+
     # force epochs to integers
     plt.gca().xaxis.set_major_locator(mticker.MultipleLocator(1))
     plt.gca().xaxis.set_major_locator(plt.MaxNLocator(10))
-    # plt.locator_params(axis='x', nbins=10)
+
     colors = cm.rainbow(np.linspace(0, 1, len(matrices)))
 
     for i, ((name, matrix), color) in enumerate(zip(matrices.items(), colors)):
         x = np.arange(matrix.shape[1]) + 1
         mean = matrix.mean(axis=0)
 
-        plt.plot(mean, color=color, label=name)
+        ax.plot(mean, color=color, label=name)
         if is_std:
             std = matrix.std(axis=0)
-            plt.fill_between(x, mean - std, mean + std, alpha=0.5, color=color)
+            ax.fill_between(x, mean - std, mean + std, color=color, alpha=0.15)
 
-    _post_processing(y_label, title)
+    plot_post_processing(y_label, x_label, title)

@@ -1,10 +1,11 @@
 """preprocessing.py: helper functions and Class for preprocessing."""
 import copy
 import os
+from typing import Callable
 
 import numpy as np
 
-import albumentations
+import albumentations as albu
 
 from matplotlib import image as mpimg
 from sklearn.model_selection import train_test_split
@@ -44,6 +45,11 @@ class RoadDataset(Dataset):
             # NB! This must be done before converting to Pytorch format
             transformed = self.transform(image=image, mask=mask)
             image, mask = transformed["image"], transformed["mask"]
+
+        # apply preprocessing
+        if self.preprocess:
+            sample = self.preprocess(image=image, mask=mask)
+            image, mask = sample['image'], sample['mask']
 
         # convert to Pytorch format HWC -> CHW
         image = np.moveaxis(image, -1, 0)
@@ -124,3 +130,17 @@ def get_patched_classification(array: np.ndarray) -> np.ndarray:
             )
 
     return patched_img
+
+
+def get_preprocessing(preprocessing_fn: Callable):
+    """
+    Construct preprocessing transform.
+            Taken from: https://github.com/qubvel/segmentation_models.pytorch/blob/master/examples/cars%20segmentation%20(camvid).ipynb
+
+    :param preprocessing_fn: data normalization function
+    :return: albumentations.Compose
+    """
+    _transform = [
+        albu.Lambda(image=preprocessing_fn)
+    ]
+    return albu.Compose(_transform)

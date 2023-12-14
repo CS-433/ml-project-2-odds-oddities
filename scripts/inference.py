@@ -10,7 +10,8 @@ import segmentation_models_pytorch as smp
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
 
-from scripts.preprocessing import RoadDataset, get_class
+from scripts.preprocessing import RoadDataset, get_class, get_preprocessing
+from segmentation_models_pytorch.encoders import get_preprocessing_fn
 
 
 class Ensembler:
@@ -129,7 +130,8 @@ def save_csv_aicrowd(filename, models, **kwargs):
         os.path.join(ai_crowd_directory, f"test_{i + 1}.png") for i in range(50)
     ]
 
-    ai_crowd_dataset = RoadDataset(ai_crowd_paths)
+    preprocessing_fn = get_preprocessing_fn('inceptionv4', pretrained='imagenet')
+    ai_crowd_dataset = RoadDataset(ai_crowd_paths, preprocess=get_preprocessing(preprocessing_fn))
     ai_crowd_dataloader = DataLoader(ai_crowd_dataset)
 
     _masks_to_submission(filename, models, ai_crowd_dataloader, **kwargs)

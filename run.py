@@ -7,8 +7,8 @@ from scripts.inference import load_tuned_models, save_csv_aicrowd
 # inceptionnet-0.2-0.4
 
 model_names = [
-    ("efficientnet-b4", "UnetPlusPlus")
-    # ("inceptionv4", "UnetPlusPlus"),
+    # ("efficientnet-b4", "UnetPlusPlus")
+    ("inceptionv4", "UnetPlusPlus"),
     # ("mit_b2", "Unet")
 ]
 
@@ -22,7 +22,7 @@ class_threshold = 0.25  # 0.4  best so far
 if __name__ == "__main__":
     models = load_tuned_models(model_names, state_dict_root)
     save_csv_aicrowd(
-        f'efficientnet_fgt{foreground_threshold}_ct{class_threshold}.csv',
+        f'inceptionv4_new_fgt{foreground_threshold}_ct{class_threshold}.csv',
         models=models,
         foreground_threshold=foreground_threshold,
         class_threshold=class_threshold

@@ -24,10 +24,20 @@ Use the bash script below to download and extract the training and testing data.
 sudo chmod +x scripts/extract-data.sh && ./scripts/extract-data.sh
 ```
 
-### Download Final Models
+If you're not on Linux based systems, you can simply download and extract data 
+from [here](https://drive.google.com/file/d/13tWz6n6agPglhNl3uk74xVOefYuy471H/view?usp=sharing) to `data/raw/`.
 
-TBD
+### Download Models
 
+Follow similar procedure for downloading the final models used in ensembling.
+
+```bash
+sudo chmod +x scripts/download-models.sh && ./scripts/download-models.sh
+```
+
+If you're not on Linux based OS, download and extract models from 
+[here](https://drive.google.com/file/d/1BPoDYytNB37pKZ1eWxSzVXXT9CgwrXV8/view?usp=drive_link) to 
+`data/results/final_models/`.
 
 ## Usage
 
@@ -44,12 +54,12 @@ The repository contains notebooks with experiments for finding the best possible
 
 ### Inference
 
-You can use `run.py` for running the inference. Notice that it is necessary to 
+You can use [`run.py`](run.py) for running the inference. Notice that it is necessary to 
 download the raw data and final models before running the script. 
 
-Additionally, keep in mind that the experiments and inference was done on 
-16GB NVIDIA V100 Tensor Core GPU and it might be unfeasible to run the script locally. 
-For that purpose, we've set up a notebook that can be used in e.g. Google Colab.
+Additionally, keep in mind that the experiments were done on 
+16GB NVIDIA V100 Tensor Core GPU, and it might be unfeasible to run the script 
+locally on GPU. On CPU it would take ~ 3 minutes to produce the csv.'
 
 ## Contact
 

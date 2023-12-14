@@ -92,16 +92,16 @@ def split_data(images_path: str, test_size: float):
         return train_test_split(image_paths, mask_paths, test_size=test_size)
 
 
-def get_class(array: np.ndarray) -> int:
+def get_class(array: np.ndarray, foreground_threshold: int = 0.25) -> int:
     """
     Based on the specified threshold (by professors) assign the array to
         either foreground/road (1) or background (0).
 
     :param array: usually a block with shape (16, 16)
+    :param foreground_threshold: value over which we consider it to be road
     :return: {0, 1}
     """
     # percentage of pixels > 1 required to assign a foreground label to a patch
-    foreground_threshold = 0.25
     return int(np.mean(array) > foreground_threshold)
 
 

@@ -52,7 +52,7 @@ def train_epoch(
         ensembler.update(logits.sigmoid(), labels, "training") if ensembler else None
 
         tp, fp, fn, tn = smp.metrics.get_stats(
-            logits.sigmoid(), labels, mode="binary", threshold=0.5
+            logits.sigmoid(), labels, mode="binary", threshold=0.35
         )
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro-imagewise")
 
@@ -104,7 +104,7 @@ def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float)
         loss = criterion(logits, labels.float())
 
         tp, fp, fn, tn = smp.metrics.get_stats(
-            logits.sigmoid(), labels, mode="binary", threshold=0.5
+            logits.sigmoid(), labels, mode="binary", threshold=0.35
         )
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro-imagewise")
 

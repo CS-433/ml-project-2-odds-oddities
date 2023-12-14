@@ -53,9 +53,10 @@ class Ensembler:
         else:
             arrays = list(self.inference.values())
 
-        threshold = len(arrays) // 2
-
-        return (np.add(*arrays) > threshold).astype(int)
+        if len(arrays) > 1:
+            threshold = len(arrays) // 2
+            return (np.add(*arrays) > threshold).astype(int)
+        return arrays[0].astype(int)
 
     def get_f1(self, mode: str):
         # it doesn't matter which one we take
@@ -68,12 +69,13 @@ class Ensembler:
 
 
 @torch.no_grad()
-def get_prediction(model, image) -> np.ndarray:
+def get_prediction(model, image: torch.Tensor, class_threshold: float = 0.5) -> np.ndarray:
     """
     Return prediction for the specific image.
 
     :param model: used for inference
     :param image: torch.Tensor
+    :param class_threshold: for deciding the class
     :return: segmented image
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -81,7 +83,7 @@ def get_prediction(model, image) -> np.ndarray:
     model.eval()
     logits = model(image.float())
     prediction_sigmoid = logits.sigmoid().cpu().numpy().squeeze()
-    return np.where(prediction_sigmoid >= 0.5, 1, 0)
+    return np.where(prediction_sigmoid >= class_threshold, 1, 0)
 
 
 def load_tuned_models(model_names: list, directory: str):
@@ -97,8 +99,9 @@ def load_tuned_models(model_names: list, directory: str):
 
         model = smp.create_model(decoder, encoder_name=encoder)
 
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         state_dict_path = os.path.join(directory, f"{encoder}+{decoder}.pth")
-        state_dict = torch.load(state_dict_path)["state_dict"]
+        state_dict = torch.load(state_dict_path, map_location=device)["state_dict"]
         model.load_state_dict(state_dict)
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -111,7 +114,7 @@ def load_tuned_models(model_names: list, directory: str):
     return models
 
 
-def save_csv_aicrowd(filename, models):
+def save_csv_aicrowd(filename, models, **kwargs):
     """
     Save the csv with predictions of the test set. The script assumes that
         you have followed the data extraction pipeline and have directory
@@ -129,10 +132,10 @@ def save_csv_aicrowd(filename, models):
     ai_crowd_dataset = RoadDataset(ai_crowd_paths)
     ai_crowd_dataloader = DataLoader(ai_crowd_dataset)
 
-    _masks_to_submission(filename, models, ai_crowd_dataloader)
+    _masks_to_submission(filename, models, ai_crowd_dataloader, **kwargs)
 
 
-def _mask_to_submission_string(image_number: int, prediction: np.ndarray) -> str:
+def _mask_to_submission_string(image_number: int, prediction: np.ndarray, **kwargs) -> str:
     """
     Convert mask to lines in csv.
 
@@ -144,11 +147,11 @@ def _mask_to_submission_string(image_number: int, prediction: np.ndarray) -> str
     for j in range(0, prediction.shape[1], patch_size):
         for i in range(0, prediction.shape[0], patch_size):
             patch = prediction[i : i + patch_size, j : j + patch_size]
-            label = get_class(patch)
+            label = get_class(patch, kwargs['foreground_threshold'])
             yield "{:03d}_{}_{},{}".format(image_number, j, i, label)
 
 
-def _masks_to_submission(filename, models, dataloader):
+def _masks_to_submission(filename, models, dataloader, **kwargs):
     """
     Generate csv from the predictions of the mask.
 
@@ -169,14 +172,14 @@ def _masks_to_submission(filename, models, dataloader):
             for i, model in enumerate(models):
                 ensembler.set_model(str(i), str(i))  # as we don't care about the model type
 
-                predicted = get_prediction(model, image)
+                predicted = get_prediction(model, image, kwargs['class_threshold'])
                 ensembler.add_inference(predicted, str(i))
 
             final_prediction = ensembler.get_majority_vote()
 
             f.writelines(
                 "{}\n".format(s)
-                for s in _mask_to_submission_string(img_number, final_prediction)
+                for s in _mask_to_submission_string(img_number, final_prediction, **kwargs)
             )
 
 
@@ -194,7 +197,7 @@ def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False)
     :param is_save: boolean whether to save the img
     :return: image
     """
-    img_width, img_height = 600, 600
+    img_width, img_height = 608, 608
     patch_w, patch_h = 16, 16
     im = np.zeros((img_width, img_height), dtype=np.uint8)
     f = open(filepath)

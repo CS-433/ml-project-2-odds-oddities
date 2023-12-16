@@ -1,5 +1,6 @@
 """training.py: helper functions for convenient training."""
 import random
+from collections import defaultdict
 
 import numpy as np
 import segmentation_models_pytorch as smp
@@ -8,7 +9,42 @@ from ray import tune
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from scripts.evaluation import MetricMonitor
+
+class MetricMonitor:
+    """
+    Inspired from examples of Albumentation:
+        https://albumentations.ai/docs/examples/pytorch_classification/
+    """
+    def __init__(self, float_precision: int = 3):
+        self.float_precision = float_precision
+        self.metrics = {}
+        self.reset()
+
+    def reset(self):
+        """Reset metrics dictionary."""
+        self.metrics = defaultdict(lambda: {"val": 0, "count": 0, "avg": 0})
+
+    def update(self, metric_name: str, value):
+        """Add value to the metric name."""
+        metric = self.metrics[metric_name]
+
+        metric["val"] += value
+        metric["count"] += 1
+        metric["avg"] = metric["val"] / metric["count"]
+
+    def averages(self):
+        """Return the average per metric (loss, f1)"""
+        return tuple([metric['avg'] for (metric_name, metric) in self.metrics.items()])
+
+    def __str__(self):
+        return " | ".join(
+            [
+                "{metric_name}: {avg:.{float_precision}f}".format(
+                    metric_name=metric_name, avg=metric["avg"], float_precision=self.float_precision
+                )
+                for (metric_name, metric) in self.metrics.items()
+            ]
+        )
 
 
 def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwargs) -> (float, float):
@@ -49,7 +85,7 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwa
         ensembler.update(logits.sigmoid(), labels, "training") if ensembler else None
 
         tp, fp, fn, tn = smp.metrics.get_stats(
-            logits.sigmoid(), labels, mode="binary", threshold=0.5
+            logits.sigmoid(), labels, mode="binary", threshold=0.4
         )
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro-imagewise")
 
@@ -101,7 +137,7 @@ def valid_epoch(model, dataloader, criterion, epoch, **kwargs) -> (float, float)
         loss = criterion(logits, labels.float())
 
         tp, fp, fn, tn = smp.metrics.get_stats(
-            logits.sigmoid(), labels, mode="binary", threshold=0.35
+            logits.sigmoid(), labels, mode="binary", threshold=0.4
         )
         f1_score = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro-imagewise")
 

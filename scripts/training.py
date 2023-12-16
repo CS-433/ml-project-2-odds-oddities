@@ -1,5 +1,4 @@
 """training.py: helper functions for convenient training."""
-import os
 import random
 
 import numpy as np
@@ -12,9 +11,7 @@ from tqdm import tqdm
 from scripts.evaluation import MetricMonitor
 
 
-def train_epoch(
-    model, dataloader, criterion, optimizer, scheduler, epoch, **kwargs
-) -> (float, float):
+def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwargs) -> (float, float):
     """
     Train the model and return epoch loss and average f1 score.
 
@@ -163,13 +160,20 @@ def train_model(
     return train_losses, valid_losses, train_f1s, valid_f1s
 
 
-def tune_hyperparams(
-    config, encoder: str, decoder: str, datasets: tuple, checkpoint_dir=None
-):
+def tune_hyperparams(config: dict, encoder: str, decoder: str, datasets: tuple):
+    """
+    Tune hyperparameters specified in configuration for model with
+        architecture encoder-decoder. Using training and validation datasets.
 
+    :param config: dictionary with search spaces
+    :param encoder: name of architecture
+    :param decoder: name of architecture
+    :param datasets: tuple of training and validation datasets
+    """
     train_dataset, val_dataset = datasets
 
-    # Create training and validation loaders by providing current K-Fold train/validation indices to Sampler
+    # Create training and validation loaders by ...
+    # ...providing current K-Fold train/validation indices to Sampler
     train_loader = DataLoader(train_dataset, batch_size=config["batch_size"])
     valid_loader = DataLoader(val_dataset, batch_size=config["batch_size"])
 
@@ -187,12 +191,6 @@ def tune_hyperparams(
         'focal_loss': smp.losses.FocalLoss(smp.losses.BINARY_MODE)
     }
     criterion = criteria_dict[config["criterion"]]
-
-    if checkpoint_dir:
-        checkpoint = os.path.join(checkpoint_dir, "checkpoint")
-        model_state, optimizer_state = torch.load(checkpoint)
-        model.load_state_dict(model_state)
-        optimizer.load_state_dict(optimizer_state)
 
     _ = train_model(
         model,

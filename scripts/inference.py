@@ -1,4 +1,4 @@
-"""TODO: update"""
+"""inference.py: helper Classes and functions for generating predictions."""
 import os
 from pathlib import Path
 
@@ -28,7 +28,7 @@ class Ensembler:
         self.inference = {}
 
     def set_model(self, encoder, decoder):
-        """TODO: update"""
+        """Set the class attribute that keeps the current model."""
         self._model = (encoder, decoder)
 
         for attr in self.attributes:
@@ -43,23 +43,33 @@ class Ensembler:
         self.data[f'{mode}_predictions'][self._model] += pred_matrix
 
     def add_inference(self, predictions: np.ndarray, model: str):
+        """Add predictions to the inference dict."""
         self.inference[model] = predictions
 
     def get_majority_vote(self, mode: str = None) -> np.ndarray:
-        """TODO: update."""
+        """
+        Get majority vote of the models and using the mode.
+
+        :param mode: either 'training' or 'validation'
+        :return: ensembling result
+        """
 
         if mode:
             predictions = self.data[f'{mode}_predictions']
             arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
         else:
+            # used for final inference
             arrays = list(self.inference.values())
 
+        # if we use only one model
         if len(arrays) > 1:
             threshold = len(arrays) // 2
             return (np.add(*arrays) > threshold).astype(int)
+
         return arrays[0].astype(int)
 
     def get_f1(self, mode: str):
+        """Calculate f1 score for the ensembling result."""
         # it doesn't matter which one we take
         ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
 
@@ -193,6 +203,7 @@ def _binary_to_uint8(img: np.ndarray) -> np.ndarray:
 def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False):
     """
     Convert data from CSV submission back to image mask.
+        Template provided by professors.
 
     :param filepath: absolute path to the csv
     :param image_id: one out of the 50 test images [1, 50]

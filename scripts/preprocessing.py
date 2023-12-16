@@ -17,21 +17,24 @@ IMG_PATCH_SIZE = 16
 
 class RoadDataset(Dataset):
     """
-    Dataset class for preprocessing satellite images.
-    TODO: update
+    Dataset class for preprocessing and delivering satellite images.
 
     :param image_paths: local absolute path of images
     :param mask_paths: local absolute path of ground truths
+    :param transform: Albumentations obj for transforms
+    :param preprocess: to adjust the transforms to encoder
     """
 
     def __init__(self, image_paths, mask_paths=None, transform=None, preprocess=None):
         # read images in
         self.images = [mpimg.imread(path) for path in image_paths]
         self.masks = [mpimg.imread(path) for path in mask_paths] if mask_paths else None
+
         self.transform = transform
         self.preprocess = preprocess
 
     def __getitem__(self, i):
+        """Getter for providing images to DataLoader."""
         image = self.images[i]
         # if no mask use dummy mask
         mask = (
@@ -46,7 +49,7 @@ class RoadDataset(Dataset):
             transformed = self.transform(image=image, mask=mask)
             image, mask = transformed["image"], transformed["mask"]
 
-        # apply preprocessing
+        # apply preprocessing to adjust to encoder
         if self.preprocess:
             sample = self.preprocess(image=image, mask=mask)
             image, mask = sample['image'], sample['mask']

@@ -140,11 +140,14 @@ def save_csv_aicrowd(filename, models, **kwargs):
         os.path.join(ai_crowd_directory, f"test_{i + 1}.png") for i in range(50)
     ]
 
-    preprocessing_fn = get_preprocessing_fn('inceptionv4', pretrained='imagenet')
-    ai_crowd_dataset = RoadDataset(ai_crowd_paths, preprocess=get_preprocessing(preprocessing_fn))
-    ai_crowd_dataloader = DataLoader(ai_crowd_dataset)
+    # need to have separate datasets for models due to encoder specific transforms
+    encoders = [model.name.split('-', 1)[1] for model in models]
+    preproc_fns = [get_preprocessing_fn(encoder) for encoder in encoders]
 
-    _masks_to_submission(filename, models, ai_crowd_dataloader, **kwargs)
+    datasets = [RoadDataset(ai_crowd_paths, preprocess=get_preprocessing(fn)) for fn in preproc_fns]
+    dataloaders = [DataLoader(ds) for ds in datasets]
+
+    _masks_to_submission(filename, models, dataloaders, **kwargs)
 
 
 def _mask_to_submission_string(image_number: int, prediction: np.ndarray, **kwargs) -> str:
@@ -163,26 +166,27 @@ def _mask_to_submission_string(image_number: int, prediction: np.ndarray, **kwar
             yield "{:03d}_{}_{},{}".format(image_number, j, i, label)
 
 
-def _masks_to_submission(filename, models, dataloader, **kwargs):
+def _masks_to_submission(filename, models, dataloaders, **kwargs):
     """
     Generate csv from the predictions of the mask.
 
     :param filename: to save the csv (absolute path)
     :param models: used for prediction
-    :param dataloader: with batch_size = 1
+    :param dataloaders: for every model with batch_size=1
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     with open(filename, "w") as f:
         f.write("id,prediction\n")
 
-        for img_number, (image, _) in enumerate(dataloader, 1):
-            image = image.to(device)
+        for img_number, loaders in enumerate(zip(*dataloaders), 1):
 
             ensembler = Ensembler()
 
-            for i, model in enumerate(models):
+            for i, (model, (image, _)) in enumerate(zip(models, loaders)):
                 ensembler.set_model(str(i), str(i))  # as we don't care about the model type
+
+                image = image.to(device)
 
                 predicted = get_prediction(model, image, kwargs['class_threshold'])
                 ensembler.add_inference(predicted, str(i))

@@ -184,7 +184,8 @@ def _masks_to_submission(filename, models, dataloaders, **kwargs):
             ensembler = Ensembler()
 
             for i, (model, (image, _)) in enumerate(zip(models, loaders)):
-                ensembler.set_model(str(i), str(i))  # as we don't care about the model type
+                decoder, encoder = model.name.split('-', 1)
+                ensembler.set_model(encoder, decoder)  # as we don't care about the model type
 
                 image = image.to(device)
 

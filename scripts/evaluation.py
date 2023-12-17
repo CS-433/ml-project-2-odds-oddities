@@ -1,6 +1,8 @@
 """evaluation.py: helper scripts for evaluation."""
 import json
 import os
+from collections import defaultdict
+
 import torch
 
 import numpy as np
@@ -14,6 +16,43 @@ from torch.utils.data import DataLoader
 
 from scripts.array_manipulations import simplify_array
 from scripts.preprocessing import get_class, RoadDataset
+
+
+class MetricMonitor:
+    """
+    Inspired from examples of Albumentation:
+        https://albumentations.ai/docs/examples/pytorch_classification/
+    """
+    def __init__(self, float_precision: int = 3):
+        self.float_precision = float_precision
+        self.metrics = {}
+        self.reset()
+
+    def reset(self):
+        """Reset metrics dictionary."""
+        self.metrics = defaultdict(lambda: {"val": 0, "count": 0, "avg": 0})
+
+    def update(self, metric_name: str, value):
+        """Add value to the metric name."""
+        metric = self.metrics[metric_name]
+
+        metric["val"] += value
+        metric["count"] += 1
+        metric["avg"] = metric["val"] / metric["count"]
+
+    def averages(self):
+        """Return the average per metric (loss, f1)"""
+        return tuple([metric['avg'] for (metric_name, metric) in self.metrics.items()])
+
+    def __str__(self):
+        return " | ".join(
+            [
+                "{metric_name}: {avg:.{float_precision}f}".format(
+                    metric_name=metric_name, avg=metric["avg"], float_precision=self.float_precision
+                )
+                for (metric_name, metric) in self.metrics.items()
+            ]
+        )
 
 
 @torch.no_grad()
@@ -319,58 +358,3 @@ class EvaluationMonitor:
         if any('+' in key for key in data.keys()):
             return {tuple(key.split('+')): value for key, value in data.items()}
         return data
-
-
-class Ensembler:
-    """Helper class for storing training and validation predictions for ensembling."""
-
-    attributes = [
-        'training_predictions', 'training_masks',
-        'validation_predictions', 'validation_masks'
-    ]
-
-    def __init__(self):
-        self._model = None
-        self.data = dict((attr, {}) for attr in self.attributes)
-
-    def set_model(self, encoder, decoder):
-        """Set the current model for Ensembler object."""
-        self._model = (encoder, decoder)
-
-        for attr in self.attributes:
-            self.data[attr][self._model] = []
-
-    def update(self, predictions: torch.Tensor, masks: torch.Tensor, mode: str):
-        """Update predictions and ground_truth in data to save them into JSON eventually."""
-        mask_matrix = masks.clone().cpu().detach().numpy().tolist()
-        pred_matrix = predictions.clone().cpu().detach().numpy().tolist()
-
-        self.data[f'{mode}_masks'][self._model] += mask_matrix
-        self.data[f'{mode}_predictions'][self._model] += pred_matrix
-
-    def get_majority_vote(self, mode: str):
-        """
-        Calculate the inference (contained in self.data) according to majority vote.
-
-        :param mode: either 'training' or  'validation'
-        """
-        predictions = self.data[f'{mode}_predictions']
-        arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
-        threshold = len(predictions) // 2
-
-        return (np.add(*arrays) > threshold).astype(int)
-
-    def get_f1(self, mode: str):
-        """
-        Make the inference and calculate f1 score of the fold.
-
-        :param mode: either 'training' or  'validation'
-        :return: f1 score over the fold
-        """
-        ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
-
-        ground_truth_arr = ground_truth.reshape(-1)
-        predicted_arr = self.get_majority_vote(mode).reshape(-1)
-
-        return f1_score(ground_truth_arr, predicted_arr)
-

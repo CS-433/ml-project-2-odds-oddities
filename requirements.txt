@@ -12,3 +12,8 @@ albumentations==1.3.1
 flaml==2.1.1
 flaml[blendsearch,ray]
 openml==0.14.1
+torch==2.1.0
+scikit-image==0.22.0
+ray==1.13.0
+tqdm==4.66.1
+pandas==2.1.2

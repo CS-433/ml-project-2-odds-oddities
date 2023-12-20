@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from scripts.array_manipulations import simplify_array
 from scripts.evaluation import get_patched_f1, get_correct_mask, get_prediction
 from scripts.preprocessing import get_patched_classification
+from skimage import morphology
 
 warnings.filterwarnings("ignore")
 
@@ -93,7 +94,8 @@ def plot_n_predictions(
         dataloader,
         num_images: int = 5,
         is_patched: bool = True,
-        is_comparison: bool = True
+        is_comparison: bool = True,
+        is_dilate: bool = True
 ):
     """
     Plot image with ground truth and prediction. If booleans are true,
@@ -105,6 +107,7 @@ def plot_n_predictions(
     :param num_images: to plot
     :param is_patched: if True -> plot patched mask and prediction
     :param is_comparison: if True -> plot patched comparison
+    :param is_dilate: if True -> perform one iteration of dilation and plot results
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     image_count = 0
@@ -122,6 +125,19 @@ def plot_n_predictions(
             extra_plots['comparison'] = get_correct_mask(
                 extra_plots['ground_truth_16x16'], extra_plots['predicted_16x16']
             )
+        if is_dilate:
+            """ Dilate the image once and visualize differences with base prediction."""
+
+            dilated = morphology.binary_dilation(predicted).astype(np.uint8)
+
+            # Add plots for dialation results
+            extra_plots['dilated'] = dilated
+            extra_plots['dilated_16x16'] = get_patched_classification(dilated)
+            extra_plots['comparison_dilated'] = get_correct_mask(
+                extra_plots['ground_truth_16x16'], extra_plots['dilated_16x16']
+            )
+
+            print('Dilated f1: {:.2f}'.format(get_patched_f1(dilated, label)))
 
         plot_images(
             axis=False,

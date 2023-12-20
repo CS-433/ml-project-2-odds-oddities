@@ -47,10 +47,12 @@ The repository contains notebooks with experiments for finding the best possible
 
 - [transformations.ipynb](notebooks/transformations.ipynb): compare different data augmentation techniques
 - [decoders.ipynb](notebooks/decoders.ipynb): compare different decoders with fixed encoder
+- [baseline_model.ipynb](notebooks/baseline_model.ipynb): training baseline models
 - [architectures.ipynb](notebooks/architectures.ipynb): benchmarks different encoder-decoder combinations
 - [ensembling.ipynb](notebooks/ensembling.ipynb): compare majority voting with separate models
 - [hyperopt.ipynb](notebooks/hyperopt.ipynb): tune hyperparameters with Flaml
 - [final_training.ipynb](notebooks/final_training.ipynb): train the models on the whole dataset
+- [postprocessing.ipynb](notebooks/postprocessing.ipynb): testing postprocessing methods. Yielded worse results than no postprocessing at all and is not covered in report due to space constraints
 
 ### Inference
 

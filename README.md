@@ -61,7 +61,7 @@ download the raw data and final models before running the script.
 
 Additionally, keep in mind that the experiments were done on 
 16GB NVIDIA V100 Tensor Core GPU, and it might be unfeasible to run the script 
-locally on GPU. On CPU it would take ~ 4 minutes to produce the csv.'
+locally on GPU. Running `run.py` on a CPU it would take ~ 4 minutes to produce the csv with pretrained model.
 
 ## Contact
 

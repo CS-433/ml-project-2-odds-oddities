@@ -52,7 +52,7 @@ The repository contains notebooks with experiments for finding the best possible
 - [ensembling.ipynb](notebooks/ensembling.ipynb): compare majority voting with separate models
 - [hyperopt.ipynb](notebooks/hyperopt.ipynb): tune hyperparameters with Flaml
 - [final_training.ipynb](notebooks/final_training.ipynb): train the models on the whole dataset
-- [postprocessing.ipynb](notebooks/postprocessing.ipynb): testing postprocessing methods. Yielded worse results than no postprocessing at all and is not covered in report due to space constraints.
+- [postprocessing.ipynb](notebooks/postprocessing.ipynb): testing postprocessing methods
 
 ### Inference
 

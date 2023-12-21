@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from scripts.inference import load_tuned_models, save_csv_aicrowd
+from scripts.training import setup_seed
 
 model_names = [
     ("efficientnet-b4", "UnetPlusPlus"),
@@ -13,9 +14,12 @@ model_names = [
 # hyperparams
 foreground_threshold = 0.2
 class_threshold = 0.1
+seed = 16
 
 
 if __name__ == "__main__":
+    setup_seed(seed)
+
     # get the project root path
     root_path = Path(__file__).parent
     state_dict_root = os.path.join(root_path, "data", "results", "final_models")

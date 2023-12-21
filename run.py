@@ -10,8 +10,9 @@ model_names = [
     ("mit_b2", "Unet")
 ]
 
-foreground_threshold = 0.2  # 0.2  best so far
-class_threshold = 0.25  # 0.4  best so far
+# hyperparams
+foreground_threshold = 0.2
+class_threshold = 0.1
 
 
 if __name__ == "__main__":

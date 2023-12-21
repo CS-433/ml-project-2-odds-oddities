@@ -61,7 +61,9 @@ download the raw data and final models before running the script.
 
 Additionally, keep in mind that the experiments were done on 
 16GB NVIDIA V100 Tensor Core GPU, and it might be unfeasible to run the script 
-locally on GPU. Running `run.py` on a CPU it would take ~ 4 minutes to produce the csv with pretrained models.
+locally on GPU. Running [`run.py`](run.py) on a CPU it would take ~ 4 minutes to produce the csv with pretrained models. 
+Notice that there might be small difference (1 patch) in the outcome when using CPU vs GPU due to likely rounding differences. 
+The outcome submitted to AIcrowd has been created using CPU.
 
 ## Contact
 

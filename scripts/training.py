@@ -244,16 +244,15 @@ def tune_hyperparams(config: dict, encoder: str, decoder: str, datasets: tuple):
     )
 
 
-def setup_seed(seed: int, cuda: bool = False):
+def setup_seed(seed: int):
     """
     Create global seed for torch, numpy and cuda.
 
     :param seed:
-    :param cuda: boolean whether to use gpu
     """
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if cuda:
+    if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True

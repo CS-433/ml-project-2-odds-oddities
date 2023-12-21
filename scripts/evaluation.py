@@ -23,6 +23,7 @@ class MetricMonitor:
     Inspired from examples of Albumentation:
         https://albumentations.ai/docs/examples/pytorch_classification/
     """
+
     def __init__(self, float_precision: int = 3):
         self.float_precision = float_precision
         self.metrics = {}
@@ -42,13 +43,15 @@ class MetricMonitor:
 
     def averages(self):
         """Return the average per metric (loss, f1)"""
-        return tuple([metric['avg'] for (metric_name, metric) in self.metrics.items()])
+        return tuple([metric["avg"] for (metric_name, metric) in self.metrics.items()])
 
     def __str__(self):
         return " | ".join(
             [
                 "{metric_name}: {avg:.{float_precision}f}".format(
-                    metric_name=metric_name, avg=metric["avg"], float_precision=self.float_precision
+                    metric_name=metric_name,
+                    avg=metric["avg"],
+                    float_precision=self.float_precision,
                 )
                 for (metric_name, metric) in self.metrics.items()
             ]
@@ -64,7 +67,7 @@ def get_prediction(model, image) -> np.ndarray:
     :param image: torch.Tensor
     :return: segmented image
     """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     image = image.to(device)
     model.eval()
     logits = model(image.float())
@@ -85,8 +88,12 @@ def get_patched_f1(output: np.ndarray, target: np.ndarray) -> float:
     output_patches = get_image_as_patches_array(output)
     target_patches = get_image_as_patches_array(target)
 
-    output_labels = [get_class_by_patch(output_block) for output_block in output_patches]
-    target_labels = [get_class_by_patch(target_block) for target_block in target_patches]
+    output_labels = [
+        get_class_by_patch(output_block) for output_block in output_patches
+    ]
+    target_labels = [
+        get_class_by_patch(target_block) for target_block in target_patches
+    ]
 
     # flatten the array to (N, 1)
     flat_target_labels = np.concatenate(np.array(target_labels)).ravel().tolist()
@@ -146,7 +153,7 @@ def get_test_f1(model, dataloader) -> float:
     :param dataloader: with test data
     :return: f1 score
     """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     target_labels = []
     output_labels = []
@@ -170,8 +177,10 @@ def save_csv_aicrowd(filename: str, model):
     :param model: used for predictions
     """
     root = os.path.normpath(os.getcwd() + os.sep + os.pardir)
-    ai_crowd_directory = os.path.join(root, 'data', 'raw', 'test')
-    ai_crowd_paths = [os.path.join(ai_crowd_directory, f'test_{i + 1}.png') for i in range(50)]
+    ai_crowd_directory = os.path.join(root, "data", "raw", "test")
+    ai_crowd_paths = [
+        os.path.join(ai_crowd_directory, f"test_{i + 1}.png") for i in range(50)
+    ]
 
     ai_crowd_dataset = RoadDataset(ai_crowd_paths)
     ai_crowd_dataloader = DataLoader(ai_crowd_dataset)
@@ -190,7 +199,7 @@ def _mask_to_submission_string(image_number: int, prediction: np.ndarray) -> str
     patch_size = 16
     for j in range(0, prediction.shape[1], patch_size):
         for i in range(0, prediction.shape[0], patch_size):
-            patch = prediction[i:i + patch_size, j:j + patch_size]
+            patch = prediction[i : i + patch_size, j : j + patch_size]
             label = get_class(patch)
             yield "{:03d}_{}_{},{}".format(image_number, j, i, label)
 
@@ -203,15 +212,18 @@ def _masks_to_submission(filename, model, dataloader):
     :param model: used for prediction
     :param dataloader: with batch_size = 1
     """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    with open(filename, 'w') as f:
-        f.write('id,prediction\n')
+    with open(filename, "w") as f:
+        f.write("id,prediction\n")
 
         for img_number, (image, _) in enumerate(dataloader, 1):
             image = image.to(device)
             predicted = get_prediction(model, image)
-            f.writelines('{}\n'.format(s) for s in _mask_to_submission_string(img_number, predicted))
+            f.writelines(
+                "{}\n".format(s)
+                for s in _mask_to_submission_string(img_number, predicted)
+            )
 
 
 def _binary_to_uint8(img: np.ndarray) -> np.ndarray:
@@ -233,22 +245,22 @@ def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False)
     im = np.zeros((img_width, img_height), dtype=np.uint8)
     f = open(filepath)
     lines = f.readlines()
-    image_id_str = '%.3d_' % image_id
+    image_id_str = "%.3d_" % image_id
 
     for i in range(1, len(lines)):
         line = lines[i]
         if not image_id_str in line:
             continue
 
-        tokens = line.split(',')
+        tokens = line.split(",")
         id = tokens[0]
         prediction = int(tokens[1])
-        tokens = id.split('_')
+        tokens = id.split("_")
         i = int(tokens[1])
         j = int(tokens[2])
 
-        je = min(j+patch_w, img_width)
-        ie = min(i+patch_h, img_height)
+        je = min(j + patch_w, img_width)
+        ie = min(i + patch_h, img_height)
         if prediction == 0:
             adata = np.zeros((patch_w, patch_h))
         else:
@@ -257,7 +269,7 @@ def reconstruct_from_labels(filepath: str, image_id: int, is_save: bool = False)
         im[j:je, i:ie] = _binary_to_uint8(adata)
 
     if is_save:
-        Image.fromarray(im).save('prediction_' + '%.3d' % image_id + '.png')
+        Image.fromarray(im).save("prediction_" + "%.3d" % image_id + ".png")
 
     return im
 
@@ -280,25 +292,25 @@ def get_best_f1_per_setup(setup: dict):
 
     data = np.array([best_f1s, std_devs]).T
 
-    return pd.DataFrame(data, index=setups, columns=['top_f1', 'std_dev'])
+    return pd.DataFrame(data, index=setups, columns=["top_f1", "std_dev"])
 
 
 class EvaluationMonitor:
     """Helper class for storing training and validation loss and f1 scores."""
 
-    files = ['training_f1', 'training_loss', 'validation_f1', 'validation_loss']
+    files = ["training_f1", "training_loss", "validation_f1", "validation_loss"]
 
     def __init__(self, jsons_path: str):
         self.jsons_path = jsons_path
         self.data = {}
 
         for metric in self.files:
-            filepath = os.path.join(jsons_path, f'{metric}.json')
+            filepath = os.path.join(jsons_path, f"{metric}.json")
             self.data[metric] = self._get_dict(filepath)
 
     def get_not_updated_models(self) -> list:
         """Return the list of models that don't have metrics logged yet."""
-        return [key for key, value in self.data['validation_f1'].items() if not value]
+        return [key for key, value in self.data["validation_f1"].items() if not value]
 
     def update_metrics(self, setup: str, **metrics):
         """Update the metrics in dictionary."""
@@ -313,7 +325,7 @@ class EvaluationMonitor:
         :param fold: starting from 0
         :param metrics: kwargs with metric values
         """
-        setup = (setup, ) if setup == 'ensembling' else tuple(setup.split('+'))
+        setup = (setup,) if setup == "ensembling" else tuple(setup.split("+"))
 
         for name, metric in metrics.items():
 
@@ -329,16 +341,16 @@ class EvaluationMonitor:
     def update_jsons(self):
         """Update json based on dictionary."""
         for file in self.files:
-            filepath = os.path.join(self.jsons_path, f'{file}.json')
-            json_file = open(filepath, 'w+')
+            filepath = os.path.join(self.jsons_path, f"{file}.json")
+            json_file = open(filepath, "w+")
             data = self._tuple_key_to_string(self.data[file])
             json_file.write(json.dumps(data))
             json_file.close()
 
     def _get_dict(self, filepath: str):
         """Get dictionary from json. If necessary convert strings with '+'
-            (combination in setup) to tuples."""
-        json_file = open(filepath, 'r')
+        (combination in setup) to tuples."""
+        json_file = open(filepath, "r")
         data = json.load(json_file)
         json_file.close()
         return self._string_key_to_tuple(data)
@@ -346,15 +358,15 @@ class EvaluationMonitor:
     @staticmethod
     def _tuple_key_to_string(data: dict) -> dict:
         """Convert dictionary keys from the instance of tuple to strings concatenated with '+'.
-            It's necessary due to json-s incapability to handle tuples."""
+        It's necessary due to json-s incapability to handle tuples."""
         if any(isinstance(key, tuple) for key in data.keys()):
-            return {'+'.join(key): value for key, value in data.items()}
+            return {"+".join(key): value for key, value in data.items()}
         return data
 
     @staticmethod
     def _string_key_to_tuple(data: dict) -> dict:
         """Convert dictionary keys from the instance of string concatenated with '+' to tuple.
-            String is necessary due to json-s incapability with tuples."""
-        if any('+' in key for key in data.keys()):
-            return {tuple(key.split('+')): value for key, value in data.items()}
+        String is necessary due to json-s incapability with tuples."""
+        if any("+" in key for key in data.keys()):
+            return {tuple(key.split("+")): value for key, value in data.items()}
         return data

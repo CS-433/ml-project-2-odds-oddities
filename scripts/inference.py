@@ -18,8 +18,10 @@ class Ensembler:
     """Helper class for storing training and validation predictions for ensembling."""
 
     attributes = [
-        'training_predictions', 'training_masks',
-        'validation_predictions', 'validation_masks'
+        "training_predictions",
+        "training_masks",
+        "validation_predictions",
+        "validation_masks",
     ]
 
     def __init__(self):
@@ -39,8 +41,8 @@ class Ensembler:
         mask_matrix = masks.clone().cpu().detach().numpy().tolist()
         pred_matrix = predictions.clone().cpu().detach().numpy().tolist()
 
-        self.data[f'{mode}_masks'][self._model] += mask_matrix
-        self.data[f'{mode}_predictions'][self._model] += pred_matrix
+        self.data[f"{mode}_masks"][self._model] += mask_matrix
+        self.data[f"{mode}_predictions"][self._model] += pred_matrix
 
     def add_inference(self, predictions: np.ndarray, model: str):
         """Add predictions to the inference dict."""
@@ -55,8 +57,10 @@ class Ensembler:
         """
 
         if mode:
-            predictions = self.data[f'{mode}_predictions']
-            arrays = [(np.array(pred) >= 0.5).astype(int) for pred in predictions.values()]
+            predictions = self.data[f"{mode}_predictions"]
+            arrays = [
+                (np.array(pred) >= 0.5).astype(int) for pred in predictions.values()
+            ]
         else:
             # used for final inference
             arrays = list(self.inference.values())
@@ -71,7 +75,7 @@ class Ensembler:
     def get_f1(self, mode: str):
         """Calculate f1 score for the ensembling result."""
         # it doesn't matter which one we take
-        ground_truth = np.array(list(self.data[f'{mode}_masks'].values())[0])
+        ground_truth = np.array(list(self.data[f"{mode}_masks"].values())[0])
 
         ground_truth_arr = ground_truth.reshape(-1)
         predicted_arr = self.get_majority_vote(mode).reshape(-1)
@@ -80,7 +84,9 @@ class Ensembler:
 
 
 @torch.no_grad()
-def get_prediction(model, image: torch.Tensor, class_threshold: float = 0.5) -> np.ndarray:
+def get_prediction(
+    model, image: torch.Tensor, class_threshold: float = 0.5
+) -> np.ndarray:
     """
     Return prediction for the specific image.
 
@@ -110,7 +116,7 @@ def load_tuned_models(model_names: list, directory: str):
 
         model = smp.create_model(decoder, encoder_name=encoder)
 
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         state_dict_path = os.path.join(directory, f"{encoder}+{decoder}.pth")
         state_dict = torch.load(state_dict_path, map_location=device)["state_dict"]
         model.load_state_dict(state_dict)
@@ -141,16 +147,21 @@ def save_csv_aicrowd(filename, models, **kwargs):
     ]
 
     # need to have separate datasets for models due to encoder specific transforms
-    encoders = [model.name.split('-', 1)[1] for model in models]
+    encoders = [model.name.split("-", 1)[1] for model in models]
     preproc_fns = [get_preprocessing_fn(encoder) for encoder in encoders]
 
-    datasets = [RoadDataset(ai_crowd_paths, preprocess=get_preprocessing(fn)) for fn in preproc_fns]
+    datasets = [
+        RoadDataset(ai_crowd_paths, preprocess=get_preprocessing(fn))
+        for fn in preproc_fns
+    ]
     dataloaders = [DataLoader(ds) for ds in datasets]
 
     _masks_to_submission(filename, models, dataloaders, **kwargs)
 
 
-def _mask_to_submission_string(image_number: int, prediction: np.ndarray, **kwargs) -> str:
+def _mask_to_submission_string(
+    image_number: int, prediction: np.ndarray, **kwargs
+) -> str:
     """
     Convert mask to lines in csv.
 
@@ -162,7 +173,7 @@ def _mask_to_submission_string(image_number: int, prediction: np.ndarray, **kwar
     for j in range(0, prediction.shape[1], patch_size):
         for i in range(0, prediction.shape[0], patch_size):
             patch = prediction[i : i + patch_size, j : j + patch_size]
-            label = get_class(patch, kwargs['foreground_threshold'])
+            label = get_class(patch, kwargs["foreground_threshold"])
             yield "{:03d}_{}_{},{}".format(image_number, j, i, label)
 
 
@@ -184,19 +195,23 @@ def _masks_to_submission(filename, models, dataloaders, **kwargs):
             ensembler = Ensembler()
 
             for i, (model, (image, _)) in enumerate(zip(models, loaders)):
-                decoder, encoder = model.name.split('-', 1)
-                ensembler.set_model(encoder, decoder)  # as we don't care about the model type
+                decoder, encoder = model.name.split("-", 1)
+                ensembler.set_model(
+                    encoder, decoder
+                )  # as we don't care about the model type
 
                 image = image.to(device)
 
-                predicted = get_prediction(model, image, kwargs['class_threshold'])
+                predicted = get_prediction(model, image, kwargs["class_threshold"])
                 ensembler.add_inference(predicted, str(i))
 
             final_prediction = ensembler.get_majority_vote()
 
             f.writelines(
                 "{}\n".format(s)
-                for s in _mask_to_submission_string(img_number, final_prediction, **kwargs)
+                for s in _mask_to_submission_string(
+                    img_number, final_prediction, **kwargs
+                )
             )
 
 

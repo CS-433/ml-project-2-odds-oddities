@@ -15,6 +15,7 @@ class MetricMonitor:
     Inspired from examples of Albumentation:
         https://albumentations.ai/docs/examples/pytorch_classification/
     """
+
     def __init__(self, float_precision: int = 3):
         self.float_precision = float_precision
         self.metrics = {}
@@ -34,20 +35,24 @@ class MetricMonitor:
 
     def averages(self):
         """Return the average per metric (loss, f1)"""
-        return tuple([metric['avg'] for (metric_name, metric) in self.metrics.items()])
+        return tuple([metric["avg"] for (metric_name, metric) in self.metrics.items()])
 
     def __str__(self):
         return " | ".join(
             [
                 "{metric_name}: {avg:.{float_precision}f}".format(
-                    metric_name=metric_name, avg=metric["avg"], float_precision=self.float_precision
+                    metric_name=metric_name,
+                    avg=metric["avg"],
+                    float_precision=self.float_precision,
                 )
                 for (metric_name, metric) in self.metrics.items()
             ]
         )
 
 
-def train_epoch(model, dataloader, criterion, optimizer, scheduler, epoch, **kwargs) -> (float, float):
+def train_epoch(
+    model, dataloader, criterion, optimizer, scheduler, epoch, **kwargs
+) -> (float, float):
     """
     Train the model and return epoch loss and average f1 score.
 
@@ -223,8 +228,8 @@ def tune_hyperparams(config: dict, encoder: str, decoder: str, datasets: tuple):
     )
 
     criteria_dict = {
-        'dice_loss': smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True),
-        'focal_loss': smp.losses.FocalLoss(smp.losses.BINARY_MODE)
+        "dice_loss": smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True),
+        "focal_loss": smp.losses.FocalLoss(smp.losses.BINARY_MODE),
     }
     criterion = criteria_dict[config["criterion"]]
 

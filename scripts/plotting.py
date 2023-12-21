@@ -31,19 +31,16 @@ def plot_images(axis: bool = True, tight_layout: bool = False, **images):
     for i, (name, image) in enumerate(images.items()):
 
         plt.subplot(1, image_count, i + 1)
-        plt.axis('off') if not axis else None
+        plt.axis("off") if not axis else None
         # get title from the parameter names
-        plt.title(name.replace('_', ' ').title(), fontsize=14)
+        plt.title(name.replace("_", " ").title(), fontsize=14)
         plt.imshow(simplify_array(image), cmap="Greys_r")
     plt.tight_layout() if tight_layout else None
     plt.show()
 
 
 def plot_post_processing(
-        y_label: str = '',
-        x_label: str = 'epoch',
-        title: str = '',
-        legend: bool = True
+    y_label: str = "", x_label: str = "epoch", title: str = "", legend: bool = True
 ):
     """Increase font size and add labels/titles to the charts."""
     plt.xlabel(x_label, fontsize=16)
@@ -60,10 +57,10 @@ def plot_post_processing(
 
 
 def plot_metric_per_epoch(
-        train: Union[list, np.ndarray],
-        validation: Union[list, np.ndarray],
-        y_label: str,
-        title: str = None
+    train: Union[list, np.ndarray],
+    validation: Union[list, np.ndarray],
+    y_label: str,
+    title: str = None,
 ):
     """
     Plot two-line graph with metric per epoch.
@@ -73,29 +70,29 @@ def plot_metric_per_epoch(
     :param y_label: usually the name of metric
     :param title: if necessary
     """
-    plt.set_cmap('Set2')
+    plt.set_cmap("Set2")
 
     # use latex whenever possible
-    plt.rc('text', usetex=bool(find_executable('latex')))
+    plt.rc("text", usetex=bool(find_executable("latex")))
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", plt.cm.Dark2.colors)
 
     # force epochs to integers
     plt.gca().xaxis.set_major_locator(mticker.MultipleLocator(1))
 
     x = np.arange(len(train))
-    plt.plot(x, train, label='train')
-    plt.plot(x, validation, label='validation')
+    plt.plot(x, train, label="train")
+    plt.plot(x, validation, label="validation")
 
     plot_post_processing(y_label, title)
 
 
 def plot_n_predictions(
-        model,
-        dataloader,
-        num_images: int = 5,
-        is_patched: bool = True,
-        is_comparison: bool = True,
-        is_dilate: bool = True
+    model,
+    dataloader,
+    num_images: int = 5,
+    is_patched: bool = True,
+    is_comparison: bool = True,
+    is_dilate: bool = True,
 ):
     """
     Plot image with ground truth and prediction. If booleans are true,
@@ -109,35 +106,35 @@ def plot_n_predictions(
     :param is_comparison: if True -> plot patched comparison
     :param is_dilate: if True -> perform one iteration of dilation and plot results
     """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     image_count = 0
 
     for image, label in dataloader:
         image, label = image.to(device), label.to(device)
         predicted = get_prediction(model, image)
-        print('f1: {:.2f}'.format(get_patched_f1(predicted, label)))
+        print("f1: {:.2f}".format(get_patched_f1(predicted, label)))
 
         extra_plots = {}
         if is_patched:
-            extra_plots['ground_truth_16x16'] = get_patched_classification(label)
-            extra_plots['predicted_16x16'] = get_patched_classification(predicted)
+            extra_plots["ground_truth_16x16"] = get_patched_classification(label)
+            extra_plots["predicted_16x16"] = get_patched_classification(predicted)
         if is_comparison:
-            extra_plots['comparison'] = get_correct_mask(
-                extra_plots['ground_truth_16x16'], extra_plots['predicted_16x16']
+            extra_plots["comparison"] = get_correct_mask(
+                extra_plots["ground_truth_16x16"], extra_plots["predicted_16x16"]
             )
         if is_dilate:
-            """ Dilate the image once and visualize differences with base prediction."""
+            """Dilate the image once and visualize differences with base prediction."""
 
             dilated = morphology.binary_dilation(predicted).astype(np.uint8)
 
             # Add plots for dialation results
-            extra_plots['dilated'] = dilated
-            extra_plots['dilated_16x16'] = get_patched_classification(dilated)
-            extra_plots['comparison_dilated'] = get_correct_mask(
-                extra_plots['ground_truth_16x16'], extra_plots['dilated_16x16']
+            extra_plots["dilated"] = dilated
+            extra_plots["dilated_16x16"] = get_patched_classification(dilated)
+            extra_plots["comparison_dilated"] = get_correct_mask(
+                extra_plots["ground_truth_16x16"], extra_plots["dilated_16x16"]
             )
 
-            print('Dilated f1: {:.2f}'.format(get_patched_f1(dilated, label)))
+            print("Dilated f1: {:.2f}".format(get_patched_f1(dilated, label)))
 
         plot_images(
             axis=False,
@@ -153,11 +150,7 @@ def plot_n_predictions(
 
 
 def plot_cv_per_epoch(
-        y_label: str,
-        x_label: str,
-        title: str = None,
-        is_std: bool = True,
-        **matrices
+    y_label: str, x_label: str, title: str = None, is_std: bool = True, **matrices
 ):
     """
     Plot cross-validation results with std if needed.
@@ -168,10 +161,10 @@ def plot_cv_per_epoch(
     :param is_std: if True use fill-between
     :param matrices: kwargs as label=matrix pairs
     """
-    plt.set_cmap('Set2')
+    plt.set_cmap("Set2")
 
     # use latex whenever possible
-    plt.rc('text', usetex=bool(find_executable('latex')))
+    plt.rc("text", usetex=bool(find_executable("latex")))
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", plt.cm.Dark2.colors)
 
     fig, ax = plt.subplots(figsize=(6.4, 4.4))

@@ -52,7 +52,7 @@ class RoadDataset(Dataset):
         # apply preprocessing to adjust to encoder
         if self.preprocess:
             sample = self.preprocess(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
+            image, mask = sample["image"], sample["mask"]
 
         # convert to Pytorch format HWC -> CHW
         image = np.moveaxis(image, -1, 0)
@@ -143,7 +143,5 @@ def get_preprocessing(preprocessing_fn: Callable):
     :param preprocessing_fn: data normalization function
     :return: albumentations.Compose
     """
-    _transform = [
-        albu.Lambda(image=preprocessing_fn)
-    ]
+    _transform = [albu.Lambda(image=preprocessing_fn)]
     return albu.Compose(_transform)

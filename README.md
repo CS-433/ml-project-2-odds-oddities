@@ -43,7 +43,7 @@ If you're not on Linux based OS, download and extract models from
 
 ### Notebooks
 
-The repository contains notebooks with experiments for finding the best possible model:
+The repository contains notebooks with experiments for finding the best possible setup:
 
 - [baseline_model.ipynb](notebooks/baseline_model.ipynb): training baseline models
 - [transformations.ipynb](notebooks/transformations.ipynb): compare different data augmentation techniques
@@ -61,7 +61,7 @@ download the raw data and final models before running the script.
 
 Additionally, keep in mind that the experiments were done on 
 16GB NVIDIA V100 Tensor Core GPU, and it might be unfeasible to run the script 
-locally on GPU. Running `run.py` on a CPU it would take ~ 4 minutes to produce the csv with pretrained model.
+locally on GPU. Running `run.py` on a CPU it would take ~ 4 minutes to produce the csv with pretrained models.
 
 ## Contact
 

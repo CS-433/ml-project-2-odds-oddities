@@ -3,8 +3,8 @@
 # Project 2
 
 This repository contains the work of Siim Markus Marvet and Jan Kokla 
-for ML Project 2, where we aimed to separate roads from the background 
-in satellite imagery.
+for EPFL Machine Learning course (CS-433). The project aims to separate 
+roads from the background in satellite imagery.
 
 ## Getting Started
 
